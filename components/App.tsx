@@ -589,7 +589,7 @@ function POS() {
     </div>
 
     <div className="pos-layout">
-      <div>
+      <div className="pos-products-col">
         <div className="search pos-search"><Search size={17}/><input ref={searchRef} placeholder="Search products… (press / to search)" value={search} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setSearch(e.target.value)} autoFocus/></div>
         <div className="category-row">{categories.map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div>
         <div className="product-grid">
@@ -626,6 +626,7 @@ function POS() {
           <button onClick={()=>{ if(cart.length && confirm("Clear cart?")) clear(); }} disabled={!cart.length}><Trash2 size={15}/> Clear Cart</button>
         </div>
       </div>
+      <div className="pos-cart-col">
       <aside className="cart-panel">
         <div className="panel-head"><div><small>CURRENT ORDER</small><h2>Table order</h2></div><button className="text-btn" onClick={clear} title="Clear cart (F7)">Clear <span className="kbd-hint">F7</span></button></div>
 
@@ -692,6 +693,7 @@ function POS() {
           </div>
         )}
       </aside>
+      </div>
     </div>
   </>;
 }
