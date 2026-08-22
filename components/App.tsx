@@ -5,7 +5,8 @@ import {
   Home, LayoutGrid, Menu, Plus, ReceiptText, Search, Settings, ShieldCheck, ShoppingCart,
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
-  Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell
+  Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
+  Zap, Cigarette, Cookie, CupSoda, Wine
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -515,7 +516,7 @@ function POS() {
     setMessage(`Tab opened on ${table?.name ?? "table"} • ${money(total)} running`);
   };
 
-  const categories: Array<ProductCategory|"All"> = ["All","Beer","Spirits","Wine","Soft Drinks","Water"];
+  const categories: Array<ProductCategory|"All"> = ["All","Beer","Spirits","Wine","Soft Drinks","Energy Drinks","Cigarettes","Snacks","Juice","Water"];
   const filteredProducts = products.filter(p =>
     (category === "All" || p.category === category) &&
     (search === "" || p.name.toLowerCase().includes(search.toLowerCase()))
@@ -579,23 +580,43 @@ function POS() {
       </div>
     )}
 
+    <div className="pos-inventory-bar">
+      <div className="pos-inv-stat"><Package size={14}/> <b>{products.length}</b> <span>Products</span></div>
+      <div className="pos-inv-stat"><Boxes size={14}/> <b>{products.reduce((s,p)=>s+p.stock,0)}</b> <span>Total Stock</span></div>
+      <div className="pos-inv-stat danger"><AlertTriangle size={14}/> <b>{products.filter(p=>p.stock<=p.reorderLevel && p.active).length}</b> <span>Low Stock</span></div>
+      <div className="pos-inv-stat"><CheckCircle2 size={14}/> <b>{products.filter(p=>p.stock>p.reorderLevel && p.active).length}</b> <span>Healthy</span></div>
+      <div className="pos-inv-stat gold"><CircleDollarSign size={14}/> <b>{money(products.reduce((s,p)=>s+p.stock*p.bottlePrice,0))}</b> <span>Stock Value</span></div>
+    </div>
+
     <div className="pos-layout">
       <div>
         <div className="search pos-search"><Search size={17}/><input ref={searchRef} placeholder="Search products… (press / to search)" value={search} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setSearch(e.target.value)} autoFocus/></div>
         <div className="category-row">{categories.map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div>
         <div className="product-grid">
-          {filteredProducts.map(p=><article className="product-card" key={p.id}>
-            <div className="product-visual">{p.category==="Beer"?<Beer/>:p.category==="Water"?<GlassWater/>:<Crown/>}</div>
+          {filteredProducts.map(p=>{
+            const unitLabel = p.category==="Cigarettes" ? "Pack" : p.category==="Snacks" ? "Item" : "Bottle";
+            const visual = p.category==="Beer" ? <Beer/>
+              : p.category==="Water" ? <GlassWater/>
+              : p.category==="Wine" ? <Wine/>
+              : p.category==="Spirits" ? <Crown/>
+              : p.category==="Energy Drinks" ? <Zap/>
+              : p.category==="Cigarettes" ? <Cigarette/>
+              : p.category==="Snacks" ? <Cookie/>
+              : p.category==="Juice" ? <CupSoda/>
+              : <CupSoda/>;
+            return <article className="product-card" key={p.id}>
+            <div className="product-visual">{visual}</div>
             <div><h3>{p.name}</h3><small>{p.category} • Stock {p.stock}</small></div>
             <div className="price-buttons">
-              <button onClick={()=>add(p.id,"bottle")} disabled={p.stock<=0}><span>Bottle</span>{money(p.bottlePrice)}</button>
+              <button onClick={()=>add(p.id,"bottle")} disabled={p.stock<=0}><span>{unitLabel}</span>{money(p.bottlePrice)}</button>
               {p.shotPrice && <button className="gold" onClick={()=>add(p.id,"shot")}><span>Shot / Tot</span>{money(p.shotPrice)}</button>}
             </div>
             <div className="product-footer">
               <small>Stock: {p.stock}</small>
               {p.shotsPerBottle && <small className="shots-left">Shots Left: {p.remainingShots ?? p.shotsPerBottle}</small>}
             </div>
-          </article>)}
+          </article>;
+          })}
         </div>
 
         <div className="pos-quick-actions">
@@ -815,7 +836,7 @@ function Inventory() {
       <div className="add-product-form">
         <input placeholder="Product name" value={newName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewName(e.target.value)}/>
         <select value={newCategory} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setNewCategory(e.target.value as ProductCategory)}>
-          {(["Beer","Spirits","Wine","Soft Drinks","Water"] as ProductCategory[]).map(c=><option key={c} value={c}>{c}</option>)}
+          {(["Beer","Spirits","Wine","Soft Drinks","Energy Drinks","Cigarettes","Snacks","Juice","Water"] as ProductCategory[]).map(c=><option key={c} value={c}>{c}</option>)}
         </select>
         <input type="number" placeholder="Bottle price" value={newPrice} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewPrice(e.target.value)}/>
         <input type="number" placeholder="Reorder level" value={newReorder} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewReorder(e.target.value)}/>

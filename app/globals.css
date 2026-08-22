@@ -261,6 +261,14 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .held-count{display:inline-flex;align-items:center;gap:3px;margin-left:8px;color:var(--orange);font-size:10px}
 .pos-actions{display:flex;gap:8px}
 .pos-search{margin-bottom:10px}
+.pos-inventory-bar{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.pos-inv-stat{display:flex;align-items:center;gap:6px;background:linear-gradient(145deg,#0e1011,#0a0b0c);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12px;transition:var(--transition)}
+.pos-inv-stat:hover{border-color:#3a3d41}
+.pos-inv-stat svg{color:var(--muted)}
+.pos-inv-stat b{font-size:14px;color:#fff}
+.pos-inv-stat span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.pos-inv-stat.danger{border-color:rgba(255,101,86,.2)}.pos-inv-stat.danger svg{color:#ff6556}.pos-inv-stat.danger b{color:#ff6556}
+.pos-inv-stat.gold{border-color:#3d3208}.pos-inv-stat.gold svg{color:var(--yellow)}.pos-inv-stat.gold b{color:var(--yellow)}
 .held-orders-panel{background:#0d0f10;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
 .held-orders-panel h3{margin:0 0 10px;font-size:15px}
 .held-order-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}

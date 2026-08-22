@@ -4,11 +4,14 @@ import { pesewasToGhanaCedis, ghanaCedisToPesewas } from "@/lib/domain/money";
 type SupabaseRow = Record<string, unknown>;
 
 const categoryMap: Record<string, ProductCategory> = {
-  beer: "Beer", spirits: "Spirits", wine: "Wine", soft_drinks: "Soft Drinks", water: "Water", other: "Soft Drinks"
+  beer: "Beer", spirits: "Spirits", wine: "Wine", soft_drinks: "Soft Drinks", water: "Water",
+  energy_drinks: "Energy Drinks", cigarettes: "Cigarettes", snacks: "Snacks", juice: "Juice",
+  other: "Soft Drinks"
 };
 
 const categoryToDb: Record<ProductCategory, string> = {
-  Beer: "beer", Spirits: "spirits", Wine: "wine", "Soft Drinks": "soft_drinks", Water: "water"
+  Beer: "beer", Spirits: "spirits", Wine: "wine", "Soft Drinks": "soft_drinks", Water: "water",
+  "Energy Drinks": "energy_drinks", Cigarettes: "cigarettes", Snacks: "snacks", Juice: "juice"
 };
 
 const paymentMethodMap: Record<string, PaymentMethod> = {

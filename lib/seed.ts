@@ -1,16 +1,50 @@
 import type { BarTable, Customer, GiftCard, Product, SaleRecord, StaffMember, Match, Expense, Debt } from "./types";
 
 export const productsSeed: Product[] = [
+  // Beer
   { id: "p1", name: "Club Beer", category: "Beer", bottlePrice: 18, stock: 32, reorderLevel: 10, active: true, costPrice: 12 },
   { id: "p2", name: "Guinness", category: "Beer", bottlePrice: 20, stock: 24, reorderLevel: 10, active: true, costPrice: 14 },
   { id: "p3", name: "Heineken", category: "Beer", bottlePrice: 22, stock: 20, reorderLevel: 8, active: true, costPrice: 15 },
+  { id: "p11", name: "Star Beer", category: "Beer", bottlePrice: 16, stock: 28, reorderLevel: 10, active: true, costPrice: 10 },
+  { id: "p12", name: "Budweiser", category: "Beer", bottlePrice: 25, stock: 15, reorderLevel: 6, active: true, costPrice: 18 },
+  { id: "p13", name: "Gulder", category: "Beer", bottlePrice: 17, stock: 22, reorderLevel: 8, active: true, costPrice: 11 },
+  // Spirits
   { id: "p4", name: "Black & White", category: "Spirits", bottlePrice: 220, shotPrice: 15, stock: 8, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 10, active: true, costPrice: 150 },
   { id: "p5", name: "Johnnie Walker", category: "Spirits", bottlePrice: 250, shotPrice: 18, stock: 5, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 6, active: true, costPrice: 170 },
   { id: "p6", name: "Hennessy VS", category: "Spirits", bottlePrice: 300, shotPrice: 22, stock: 3, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 9, active: true, costPrice: 210 },
+  { id: "p14", name: "Adebayo", category: "Spirits", bottlePrice: 180, shotPrice: 12, stock: 6, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 11, active: true, costPrice: 120 },
+  { id: "p15", name: "Smirnoff Vodka", category: "Spirits", bottlePrice: 200, shotPrice: 14, stock: 7, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 8, active: true, costPrice: 140 },
+  { id: "p16", name: "Jack Daniel's", category: "Spirits", bottlePrice: 280, shotPrice: 20, stock: 4, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 5, active: true, costPrice: 190 },
+  // Wine
   { id: "p7", name: "Red Wine", category: "Wine", bottlePrice: 150, shotPrice: 12, stock: 6, reorderLevel: 4, shotsPerBottle: 12, remainingShots: 8, active: true, costPrice: 90 },
+  { id: "p17", name: "White Wine", category: "Wine", bottlePrice: 140, shotPrice: 11, stock: 5, reorderLevel: 4, shotsPerBottle: 12, remainingShots: 10, active: true, costPrice: 85 },
+  { id: "p18", name: "Rose Wine", category: "Wine", bottlePrice: 130, stock: 4, reorderLevel: 3, active: true, costPrice: 80 },
+  // Soft Drinks
   { id: "p8", name: "Coke", category: "Soft Drinks", bottlePrice: 10, stock: 40, reorderLevel: 12, active: true, costPrice: 5 },
   { id: "p9", name: "Malt", category: "Soft Drinks", bottlePrice: 15, stock: 18, reorderLevel: 8, active: true, costPrice: 8 },
-  { id: "p10", name: "Water", category: "Water", bottlePrice: 5, stock: 45, reorderLevel: 15, active: true, costPrice: 2 }
+  { id: "p19", name: "Fanta", category: "Soft Drinks", bottlePrice: 10, stock: 30, reorderLevel: 10, active: true, costPrice: 5 },
+  { id: "p20", name: "Sprite", category: "Soft Drinks", bottlePrice: 10, stock: 25, reorderLevel: 10, active: true, costPrice: 5 },
+  // Water
+  { id: "p10", name: "Water", category: "Water", bottlePrice: 5, stock: 45, reorderLevel: 15, active: true, costPrice: 2 },
+  { id: "p21", name: "Voltic Water 1.5L", category: "Water", bottlePrice: 12, stock: 20, reorderLevel: 8, active: true, costPrice: 6 },
+  // Energy Drinks
+  { id: "p22", name: "Red Bull", category: "Energy Drinks", bottlePrice: 25, stock: 16, reorderLevel: 8, active: true, costPrice: 15 },
+  { id: "p23", name: "Storm Energy", category: "Energy Drinks", bottlePrice: 18, stock: 14, reorderLevel: 6, active: true, costPrice: 10 },
+  { id: "p24", name: "Predator", category: "Energy Drinks", bottlePrice: 20, stock: 12, reorderLevel: 6, active: true, costPrice: 12 },
+  // Cigarettes
+  { id: "p25", name: "Marlboro Red", category: "Cigarettes", bottlePrice: 35, stock: 20, reorderLevel: 8, active: true, costPrice: 22 },
+  { id: "p26", name: "Rothmans", category: "Cigarettes", bottlePrice: 28, stock: 18, reorderLevel: 8, active: true, costPrice: 18 },
+  { id: "p27", name: "Benson & Hedges", category: "Cigarettes", bottlePrice: 32, stock: 15, reorderLevel: 6, active: true, costPrice: 20 },
+  { id: "p28", name: "London Menthol", category: "Cigarettes", bottlePrice: 30, stock: 10, reorderLevel: 6, active: true, costPrice: 19 },
+  // Snacks
+  { id: "p29", name: "Plantain Chips", category: "Snacks", bottlePrice: 8, stock: 30, reorderLevel: 10, active: true, costPrice: 4 },
+  { id: "p30", name: "Peanuts", category: "Snacks", bottlePrice: 6, stock: 25, reorderLevel: 10, active: true, costPrice: 3 },
+  { id: "p31", name: "Sausage Roll", category: "Snacks", bottlePrice: 12, stock: 15, reorderLevel: 6, active: true, costPrice: 7 },
+  { id: "p32", name: "Meat Pie", category: "Snacks", bottlePrice: 15, stock: 10, reorderLevel: 5, active: true, costPrice: 8 },
+  // Juice
+  { id: "p33", name: "Pineapple Juice", category: "Juice", bottlePrice: 14, stock: 16, reorderLevel: 6, active: true, costPrice: 8 },
+  { id: "p34", name: "Orange Juice", category: "Juice", bottlePrice: 14, stock: 14, reorderLevel: 6, active: true, costPrice: 8 },
+  { id: "p35", name: "Mango Juice", category: "Juice", bottlePrice: 16, stock: 12, reorderLevel: 6, active: true, costPrice: 9 }
 ];
 
 export const customersSeed: Customer[] = [

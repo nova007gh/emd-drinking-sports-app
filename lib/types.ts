@@ -1,4 +1,4 @@
-export type ProductCategory = "Beer" | "Spirits" | "Wine" | "Soft Drinks" | "Water";
+export type ProductCategory = "Beer" | "Spirits" | "Wine" | "Soft Drinks" | "Water" | "Energy Drinks" | "Cigarettes" | "Snacks" | "Juice";
 export type SaleMode = "bottle" | "shot";
 export type PaymentMethod = "cash" | "momo" | "card" | "gift" | "wallet";
 export type PaymentStatus = "pending" | "successful" | "failed" | "reversed";
