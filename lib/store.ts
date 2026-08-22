@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
 interface AppState {
   products: Product[];
@@ -61,6 +61,19 @@ interface AppState {
   topUpWallet: (customerId: string, amount: number) => void;
   spendWallet: (customerId: string, amount: number) => boolean;
   spendLoyaltyPoints: (customerId: string, points: number) => boolean;
+  // Customer portal
+  barOpen: boolean;
+  toggleBarOpen: () => void;
+  customerOrders: CustomerOrder[];
+  placeCustomerOrder: (customerId: string, tableId: string, lines: CartLine[], note?: string) => string;
+  updateCustomerOrderStatus: (orderId: string, status: CustomerOrder["status"]) => void;
+  waiterCalls: WaiterCall[];
+  callWaiter: (tableId: string, customerId?: string, message?: string) => void;
+  updateWaiterCall: (callId: string, updates: Partial<WaiterCall>) => void;
+  chatMessages: ChatMessage[];
+  sendChatMessage: (tableId: string, sender: "customer" | "waiter", text: string, customerId?: string, waiterId?: string) => void;
+  eventBookings: EventBooking[];
+  bookEvent: (matchId: string, customerId: string, customerName: string, type: "attend" | "reserve", tableId?: string) => void;
 }
 
 const totalOf = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -87,6 +100,11 @@ export const useAppStore = create<AppState>()(
       cartNote: "",
       discount: 0,
       selectedGiftCardCode: undefined,
+      barOpen: true,
+      customerOrders: [],
+      waiterCalls: [],
+      chatMessages: [],
+      eventBookings: [],
 
       addToCart: (productId, mode) => {
         const product = get().products.find((p) => p.id === productId);
@@ -531,6 +549,44 @@ export const useAppStore = create<AppState>()(
           customers: state.customers.map((c) => c.id === customerId ? { ...c, loyaltyPoints: c.loyaltyPoints - points } : c)
         }));
         return true;
+      },
+
+      toggleBarOpen: () => set((s) => ({ barOpen: !s.barOpen })),
+
+      placeCustomerOrder: (customerId, tableId, lines, note) => {
+        const id = `co${Date.now()}`;
+        const order: CustomerOrder = { id, customerId, tableId, lines, status: "pending", createdAt: new Date().toISOString(), note };
+        set((s) => ({ customerOrders: [order, ...s.customerOrders] }));
+        return id;
+      },
+
+      updateCustomerOrderStatus: (orderId, status) => set((s) => ({
+        customerOrders: s.customerOrders.map((o) => o.id === orderId ? { ...o, status } : o)
+      })),
+
+      callWaiter: (tableId, customerId, message) => {
+        const id = `wc${Date.now()}`;
+        const call: WaiterCall = { id, tableId, customerId, status: "pending", message, createdAt: new Date().toISOString() };
+        set((s) => ({ waiterCalls: [call, ...s.waiterCalls] }));
+      },
+
+      updateWaiterCall: (callId, updates) => set((s) => ({
+        waiterCalls: s.waiterCalls.map((c) => c.id === callId ? { ...c, ...updates } : c)
+      })),
+
+      sendChatMessage: (tableId, sender, text, customerId, waiterId) => {
+        const id = `msg${Date.now()}`;
+        const msg: ChatMessage = { id, tableId, customerId, waiterId, sender, text, createdAt: new Date().toISOString() };
+        set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
+      },
+
+      bookEvent: (matchId, customerId, customerName, type, tableId) => {
+        const id = `eb${Date.now()}`;
+        const booking: EventBooking = { id, matchId, customerId, customerName, tableId, type, createdAt: new Date().toISOString() };
+        set((s) => ({ eventBookings: [...s.eventBookings, booking] }));
+        if (type === "reserve" && tableId) {
+          set((s) => ({ matches: s.matches.map((m) => m.id === matchId ? { ...m, reservedTables: [...(m.reservedTables ?? []), tableId] } : m) }));
+        }
       }
     }),
     { name: "emd-drinking-sports-v2" }

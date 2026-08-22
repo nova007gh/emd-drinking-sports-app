@@ -181,3 +181,44 @@ export interface BusinessSettings {
   receiptFooter: string;
   lowStockThreshold: number;
 }
+
+export interface CustomerOrder {
+  id: string;
+  customerId: string;
+  tableId?: string;
+  lines: CartLine[];
+  status: "pending" | "preparing" | "served" | "paid";
+  createdAt: string;
+  note?: string;
+}
+
+export interface WaiterCall {
+  id: string;
+  tableId: string;
+  customerId?: string;
+  waiterId?: string;
+  status: "pending" | "accepted" | "arrived";
+  message?: string;
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  tableId: string;
+  customerId?: string;
+  waiterId?: string;
+  sender: "customer" | "waiter";
+  text: string;
+  createdAt: string;
+}
+
+export interface EventBooking {
+  id: string;
+  matchId: string;
+  customerId: string;
+  customerName: string;
+  tableId?: string;
+  type: "attend" | "reserve";
+  createdAt: string;
+}
+

@@ -22,7 +22,7 @@ import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product } fro
 type Page =
   | "Dashboard" | "POS / Sales" | "Tables" | "Inventory" | "Customers" | "Debts"
   | "Payments" | "Gift Cards" | "Wallets & Loyalty" | "Reports" | "AI Assistant"
-  | "Football Events" | "Expenses" | "Staff" | "Settings";
+  | "Event Management" | "Expenses" | "Staff" | "Settings";
 
 type IconType = typeof Home;
 
@@ -38,7 +38,7 @@ const nav: Array<{ label: Page; icon: IconType }> = [
   { label: "Wallets & Loyalty", icon: WalletCards },
   { label: "Reports", icon: BarChart3 },
   { label: "AI Assistant", icon: Bot },
-  { label: "Football Events", icon: Trophy },
+  { label: "Event Management", icon: Trophy },
   { label: "Expenses", icon: CircleDollarSign },
   { label: "Staff", icon: ShieldCheck },
   { label: "Settings", icon: Settings }
@@ -136,7 +136,7 @@ function AppInner() {
           ))}
         </nav>
         {footballMode && featuredMatch && (
-          <button className="big-match-card" onClick={() => { setPage("Football Events"); setMobileNav(false); }}>
+          <button className="big-match-card" onClick={() => { setPage("Event Management"); setMobileNav(false); }}>
             <Beer size={26}/>
             <small>BIG MATCH</small>
             <strong>TONIGHT</strong>
@@ -144,6 +144,9 @@ function AppInner() {
           </button>
         )}
         <div className="sidebar-foot">
+          <a href="/portal" className="portal-link" target="_blank" rel="noopener noreferrer">
+            <Smartphone size={14}/> Customer Portal
+          </a>
           <span className={`dot ${online ? "online" : "offline"}`}/> {online ? "You are online" : "Offline"}
           {syncState.pending > 0 && <div className="held-count"><Clock size={11}/> {syncState.pending} syncing</div>}
           {heldOrders.length > 0 && <div className="held-count"><Pause size={11}/> {heldOrders.length} held</div>}
@@ -162,8 +165,8 @@ function AppInner() {
             {syncState.status === "syncing" && <span className="sync-badge">syncing…</span>}
             {syncState.status === "failed" && <span className="sync-badge failed">sync failed</span>}
           </div>
-          <label className="football-toggle" title="Toggle football mode">
-            <span>Football Mode</span>
+          <label className="football-toggle" title="Toggle event mode">
+            <span>Event Mode</span>
             <input type="checkbox" checked={footballMode} onChange={(e:React.ChangeEvent<HTMLInputElement>) => setFootballMode(e.target.checked)}/>
             <i/>
           </label>
@@ -208,7 +211,7 @@ function AppInner() {
             {page === "Wallets & Loyalty" && <Wallets/>}
             {page === "Reports" && <Reports/>}
             {page === "AI Assistant" && <AIAssistant/>}
-            {page === "Football Events" && <Football/>}
+            {page === "Event Management" && <Football/>}
             {page === "Expenses" && <Expenses/>}
             {page === "Staff" && <Staff/>}
             {page === "Settings" && <SettingsPage/>}
@@ -382,7 +385,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
         { icon: <ReceiptText/>, title: "Credit / Debts", sub: "Manage customer debts" },
         { icon: <BarChart3/>, title: "Reports & Analytics", sub: "Powerful business insights" },
         { icon: <Bot/>, title: "AI Assistant", sub: "Smart business advisor" },
-        { icon: <Trophy/>, title: "Football Events", sub: "Schedule & promos" }
+        { icon: <Trophy/>, title: "Event Management", sub: "Schedule & promos" }
       ].map((f) => (
         <div className="feature-item" key={f.title}>
           <div className="feature-icon">{f.icon}</div>
@@ -1105,7 +1108,7 @@ function Football() {
   const [promo,setPromo]=useState("");
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
   const featured = matches.find(m=>m.featured && m.active);
-  return <PageBox title="Football Events" subtitle="Turn big matches into bigger nights">
+  return <PageBox title="Event Management" subtitle="Turn big events into bigger nights">
     {featured && <div className="match-hero"><div><small>FEATURED MATCH</small><h2>{featured.homeTeam} <span>VS</span> {featured.awayTeam}</h2><p>{new Date(featured.startsAt).toLocaleString()} • {featured.promotionText ?? "Main screen • Table bookings available"}</p></div><Trophy/></div>}
     <div className="inline-form"><input placeholder="Home team" value={home} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setHome(e.target.value)}/><input placeholder="Away team" value={away} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setAway(e.target.value)}/><input type="datetime-local" value={date} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDate(e.target.value)}/><input placeholder="Promotion text (optional)" value={promo} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setPromo(e.target.value)}/><button className="primary" onClick={()=>{if(home&&away&&date){addMatch(home,away,new Date(date).toISOString(),promo||undefined);setHome("");setAway("");setDate("");setPromo("")}}}><Plus/> Add match</button></div>
     <div className="card-grid">{matches.filter(m=>m.active).map(m=>{
@@ -1160,9 +1163,12 @@ function Staff() {
 
 function SettingsPage() {
   const { role, userName } = useAuth();
+  const barOpen = useAppStore(s => s.barOpen);
+  const toggleBarOpen = useAppStore(s => s.toggleBarOpen);
   return <PageBox title="Settings" subtitle="Business preferences and integrations">
     <div className="settings-grid">
       <Panel title="Business"><label>Business name<input defaultValue="EMD Drinking Sports"/></label><label>Currency<input defaultValue="GHS"/></label><label>Location<input defaultValue="Ghana"/></label><label>Receipt footer<input defaultValue="Thank you for drinking with EMD! Come again."/></label></Panel>
+      <Panel title="Customer Portal"><div className="setting-row"><div><b>Bar Status</b><small>Toggle to show customers if the bar is open</small></div><label className="football-toggle"><input type="checkbox" checked={barOpen} onChange={toggleBarOpen}/><i/></label></div><div className="setting-row"><div><b>Portal URL</b><small>Share this link with customers</small></div><a href="/portal" target="_blank" rel="noopener noreferrer" className="panel-link">/portal</a></div></Panel>
       <Panel title="Integrations"><div className="setting-row"><div><b>Eganow</b><small>MoMo + card gateway</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>AI Assistant</b><small>OpenAI Responses API</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>Supabase</b><small>Postgres + Auth</small></div><Status ok={false} label="Configure env"/></div></Panel>
       <Panel title="Current session"><div className="info-row"><span>Role</span><b>{roleLabels[role]}</b></div><div className="info-row"><span>User</span><b>{userName}</b></div><p className="muted-text">Switch roles from the top bar to test permissions.</p></Panel>
       <Panel title="Appearance"><p>Black, white, gold and yellow luxury theme is active.</p><div className="swatches"><i/><i/><i/><i/></div></Panel>

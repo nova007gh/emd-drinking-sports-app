@@ -188,8 +188,8 @@ test("expenses page loads for owner", async ({ page }) => {
   await expect(page.getByText("TOTAL EXPENSES")).toBeVisible();
 });
 
-test("football events page loads", async ({ page }) => {
-  await navigateTo(page, "Football");
+test("event management page loads", async ({ page }) => {
+  await navigateTo(page, "Event Management");
   await expect(page.getByRole("heading", { name: /vs/i }).first()).toBeVisible();
 });
 
@@ -598,16 +598,16 @@ test("payments page shows reconciliation column", async ({ page }) => {
   await expect(page.getByRole("columnheader", { name: "Reconciliation" })).toBeVisible();
 });
 
-test("football events shows table reservation management", async ({ page }) => {
-  await navigateTo(page, "Football Events");
+test("event management shows table reservation management", async ({ page }) => {
+  await navigateTo(page, "Event Management");
   await expect(page.getByText("Tables reserved").first()).toBeVisible();
   const manageBtn = page.getByRole("button", { name: /Manage table reservations/ }).first();
   await manageBtn.click();
   await expect(page.getByText("Reserve").first()).toBeVisible();
 });
 
-test("football event table reservation toggles", async ({ page }) => {
-  await navigateTo(page, "Football Events");
+test("event management table reservation toggles", async ({ page }) => {
+  await navigateTo(page, "Event Management");
   const firstMatch = page.locator(".info-card").first();
   await firstMatch.getByRole("button", { name: /Manage table reservations/ }).click();
   const firstReserveBtn = page.locator(".reservation-row").first().getByRole("button");
@@ -671,7 +671,7 @@ test("notification item navigates to relevant page", async ({ page }) => {
   await expect(page.getByText("Bottle stock and open-shot inventory")).toBeVisible();
 });
 
-test("football mode toggle hides big match card", async ({ page }) => {
+test("event mode toggle hides big match card", async ({ page }) => {
   await expect(page.locator(".big-match-card")).toBeVisible();
   // The checkbox itself is visually hidden; clicking the wrapping label toggles it.
   await page.locator(".football-toggle").click();
@@ -680,7 +680,7 @@ test("football mode toggle hides big match card", async ({ page }) => {
   await expect(page.locator(".big-match-card")).toBeVisible();
 });
 
-test("big match card navigates to football events", async ({ page }) => {
+test("big match card navigates to event management", async ({ page }) => {
   await page.locator(".big-match-card").click();
   await expect(page.getByText("Turn big matches into bigger nights")).toBeVisible();
 });
