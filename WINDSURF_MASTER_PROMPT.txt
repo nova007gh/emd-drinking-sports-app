@@ -1,0 +1,709 @@
+EMD DRINKING SPORTS APP — WINDSURF MASTER BUILD PROMPT
+
+You are the senior engineer finishing this EXISTING repository into a production-quality Ghana sports-bar operating system.
+
+NON-NEGOTIABLE RULES
+- Read the entire repository before editing.
+- Do not rebuild or replace the approved UI.
+- Preserve the black / white / gold / yellow visual system.
+- Preserve desktop, tablet and mobile responsiveness.
+- Keep every working feature unless replacing it with a strictly better production implementation.
+- No TODOs, fake production APIs, placeholder screens or invented payment schemas.
+- Never expose private keys in browser code.
+- Never store raw card PAN or CVV.
+
+PRODUCT
+EMD DRINKING SPORTS APP
+
+BUSINESS MODEL
+A Ghana sports bar/lounge selling:
+- beer
+- spirits
+- wine
+- soft drinks
+- water
+- full bottles
+- spirits/wine by shot or tot
+
+The system manages:
+- POS
+- tables
+- stock
+- customers
+- debts
+- payments
+- gift cards
+- loyalty wallet
+- reports
+- AI business assistant
+- football events
+- expenses
+- staff
+- settings
+
+APP EXPERIENCE
+The same Next.js app must feel excellent on:
+- desktop cashier terminals
+- laptops
+- tablets
+- Android phones
+- iPhones
+- installable PWA mode
+
+CURRENT STACK
+- Next.js 16 App Router
+- React 19
+- TypeScript strict mode
+- Supabase Postgres
+- Supabase Auth
+- @supabase/ssr
+- Zustand for local/offline UI state only
+- Recharts
+- Vitest
+- Playwright
+- service worker / PWA
+- OpenAI Responses API on the server
+- Eganow server adapter
+
+==================================================
+W — DATA, AUTH, BACKEND
+==================================================
+
+1. Begin by running:
+   npm install
+   npm run typecheck
+   npm run lint
+   npm run test
+   npm run build
+
+2. Fix every existing issue before feature expansion.
+
+3. Review and apply:
+   supabase/migrations/001_initial_schema.sql
+
+4. Use new forward-only migrations for changes after the initial migration.
+
+5. Implement Supabase Auth with:
+   - owner
+   - manager
+   - cashier
+   - waiter
+
+6. Permissions:
+   OWNER
+   - full access
+   - user/role management
+   - all financial reports
+   - inventory adjustments
+   - expenses
+   - payments
+   - settings
+
+   MANAGER
+   - daily operations
+   - inventory
+   - reports
+   - debts
+   - expenses
+   - staff views
+   - no ownership/security transfer
+
+   CASHIER
+   - POS
+   - customer lookup
+   - tables
+   - payments
+   - permitted debt actions
+   - gift-card redemption
+
+   WAITER
+   - tables
+   - create/update open orders
+   - add items
+   - customer lookup
+   - no privileged finance/settings
+
+7. Build repository/services for:
+   profiles
+   products
+   stock_movements
+   orders
+   order_lines
+   customers
+   debts
+   debt_payments
+   bar_tables
+   payments
+   gift_cards
+   gift_card_transactions
+   wallets
+   wallet_transactions
+   expenses
+   matches
+
+8. ACCOUNTING RULES
+   - persisted money is integer pesewas
+   - never use floating-point database values for accounting
+   - every stock mutation is auditable
+   - checkout is atomic
+   - failed checkout cannot partially reduce stock
+   - stock never becomes negative
+   - debt never becomes negative
+   - gift-card balance never becomes negative
+   - wallet balance never becomes negative
+
+9. SHOT / TOT INVENTORY
+   Track:
+   - sealed_bottle_stock
+   - shots_per_bottle
+   - open_bottle_shots_remaining
+
+   Example:
+   Black & White has 15 shots per bottle.
+   If an open bottle has 4 shots remaining and 5 shots are ordered:
+   - consume the remaining 4
+   - open exactly 1 sealed bottle
+   - decrease sealed bottle stock by 1
+   - leave 14 shots in the new open bottle
+
+   This operation must be transactional and audited.
+
+10. Build database RPC/transaction functions where necessary for:
+    - checkout
+    - stock adjustment
+    - gift card redeem
+    - wallet redeem
+    - debt partial payment
+    - electronic payment reconciliation
+
+==================================================
+C — COMPLETE APPLICATION CODE
+==================================================
+
+AUTH SCREENS
+- splash/loading
+- sign in
+- forgot password
+- forced password change when required
+- unauthorized screen
+- logout
+
+DASHBOARD
+Show:
+- today sales
+- yesterday comparison
+- week sales
+- month sales
+- items sold
+- active/open tables
+- total outstanding debt
+- overdue debt
+- low stock count
+- high inventory
+- best-selling product
+- least-selling product
+- top customer
+- payment method split
+- expenses
+- estimated profit
+- pending/failed payments
+- AI attention items
+
+POS
+Implement:
+- category filters
+- fast search
+- bottle sale
+- shot/tot sale
+- quantity controls
+- cart
+- customer selection
+- table selection
+- notes
+- discounts with permission checks
+- hold order
+- resume held order
+- clear order
+- split bill
+- merge bills
+- transfer table
+- cash checkout
+- MoMo checkout
+- card checkout
+- gift-card checkout
+- wallet checkout
+- debt/credit checkout where authorized
+- print/reprint receipt
+- recent orders
+- void flow with permissions and audit record
+
+INVENTORY
+- add product
+- edit product
+- activate/deactivate
+- receive stock
+- manual adjustment
+- damaged/waste stock
+- low stock
+- high stock
+- shot configuration
+- movement history
+- supplier-ready architecture
+- reorder suggestions
+
+TABLES
+- available
+- occupied
+- open
+- close
+- transfer
+- merge
+- split
+- running total
+- waiter assignment
+
+CUSTOMERS
+- customer profile
+- phone
+- total spend
+- visit frequency
+- last purchase date
+- favourite products
+- debt
+- loyalty points
+- wallet
+- gift cards
+- purchase history
+
+DEBTS
+- add debt
+- link debt to order
+- partial payment
+- full payment
+- payment history
+- aging buckets
+- overdue indicator
+- risk ranking
+- reminders log
+- owner dashboard alerts
+
+PAYMENTS
+Methods:
+- Cash
+- Mobile Money
+- Card
+- Gift Card
+- Loyalty Wallet
+
+Show:
+- transaction reference
+- order
+- method
+- provider
+- amount
+- pending/success/failed/reversed
+- created date
+- reconciliation status
+
+GIFT CARDS
+- create
+- generated secure code
+- store hash, not recoverable secret
+- check balance
+- redeem
+- partial redeem
+- expiry
+- disable
+- transaction history
+- printable/digital gift-card view
+
+LOYALTY WALLET
+- points
+- earned history
+- redemption history
+- store credit
+- top up
+- spend
+- manual adjustments restricted to owner/manager
+
+REPORTS
+- daily revenue
+- weekly revenue
+- monthly revenue
+- product performance
+- category performance
+- best seller
+- least seller
+- slow moving products
+- gross margin where cost data is available
+- expenses
+- estimated profit
+- customer ranking
+- debt aging
+- stock valuation
+- payment method mix
+- staff performance
+- table performance
+- export CSV/PDF-ready report architecture
+
+FOOTBALL EVENTS
+- create match/event
+- start time
+- teams
+- promotion
+- featured match
+- table reservation-ready architecture
+
+EXPENSES
+- expense category
+- amount
+- note
+- date
+- recorded by
+- reporting
+
+STAFF
+- user
+- role
+- active status
+- sales attributed
+- orders handled
+- permissions
+
+SETTINGS
+- business name
+- logo
+- Ghana currency GHS
+- location
+- tax/service-charge configuration
+- receipt footer
+- printer configuration
+- integrations status
+- security settings
+
+==================================================
+EGANOW PAYMENTS
+==================================================
+
+Eganow is the intended electronic payment provider.
+
+Do not infer or invent endpoint paths, request fields, signature algorithms, callback formats or status values.
+
+Only implement production network integration after the real merchant API documentation and merchant credentials are supplied.
+
+When supplied, integrate the exact official merchant contract for:
+- MTN Mobile Money
+- Telecel Cash
+- AirtelTigo Money
+- supported card payments
+- transaction initiation
+- verification
+- provider callback/webhook
+- reversals where supported
+- reconciliation
+
+PAYMENT STATE MACHINE
+Create deterministic internal states:
+- pending
+- successful
+- failed
+- reversed
+
+Rules:
+- electronic checkout starts pending
+- client-side success is never authoritative
+- only verified provider status can finalize an electronic payment
+- all initiation attempts have idempotency keys
+- repeated callbacks cannot duplicate an order/payment
+- provider reference must be unique where present
+- store masked phone/card details only
+- never store PAN/CVV
+- never log secrets
+- webhook authentication must exactly follow Eganow documentation
+
+Create a test/sandbox adapter for automated tests that does not pretend to be the live Eganow API.
+
+==================================================
+AI BUSINESS ASSISTANT
+==================================================
+
+Use trusted server-calculated analytics.
+
+The AI assistant should answer naturally:
+- Who owes the most?
+- Who is buying the most?
+- Which customers are increasing spending?
+- Which customers stopped buying recently?
+- What sold most today?
+- What sold most this week?
+- What sells least?
+- Which products are slow-moving?
+- What inventory is low?
+- What inventory is unusually high?
+- What should be reordered?
+- What should not be reordered?
+- How is business progressing today?
+- How does this week compare with last week?
+- What is MoMo vs cash vs card revenue?
+- Which payments are pending too long?
+- Which payments failed?
+- Which debts are risky?
+- Which waiter sells most?
+- Which tables generate the most sales?
+- What problems need owner attention?
+
+AI DESIGN
+- Chat history
+- suggested questions
+- daily owner briefing
+- warning cards
+- explanation of why an insight was produced
+- links from AI answer to the relevant report/customer/product
+
+AI SAFETY
+- read-only by default
+- cannot directly change stock
+- cannot alter debt
+- cannot complete payment
+- cannot change gift-card balance
+- cannot change wallet balance
+- cannot create accounting transactions
+- suggested action must open a deterministic confirmation UI
+- minimize customer personal data sent to model
+- never send API keys/secrets
+
+==================================================
+D — PWA, OFFLINE, UX, PERFORMANCE
+==================================================
+
+1. Preserve luxury black/gold UI.
+2. Make mobile UX feel native.
+3. Minimum 44px important touch targets.
+4. Add visible keyboard focus.
+5. ARIA labels for icon buttons.
+6. Desktop keyboard shortcuts:
+   - search
+   - add product
+   - checkout
+   - hold order
+   - clear cart with confirmation
+7. Installable PWA.
+8. Final icons/splash art using EMD identity.
+9. Visible online/offline indicator.
+10. Offline-safe order queue.
+11. Client-generated operation UUID.
+12. Never submit same queued operation twice.
+13. Retry safely on reconnect.
+14. Show:
+    - synced
+    - waiting to sync
+    - sync failed
+15. Server ledger is source of truth.
+16. Do not allow unsafe offline electronic-payment completion.
+17. Cache app shell and safe reference data.
+18. Lazy-load report charts and heavy screens.
+19. Optimize images/assets.
+20. Add receipt printer abstraction:
+    - browser print
+    - future Bluetooth/thermal adapter
+21. Barcode/QR-ready product search architecture.
+22. Add install prompt UX.
+23. Add mobile bottom navigation and desktop sidebar.
+24. Preserve responsive POS cart behavior.
+
+==================================================
+T — TEST SUITE
+==================================================
+
+Use Vitest for domain/service tests.
+Use Playwright for end-to-end flows.
+
+UNIT TESTS REQUIRED
+1. bottle sale reduces sealed stock
+2. bottle sale cannot make stock negative
+3. shot sale consumes open bottle shots first
+4. shot sale opens one bottle when necessary
+5. shot sale can cross multiple bottles correctly
+6. shot sale fails atomically when total available shots are insufficient
+7. GHS converts to integer pesewas
+8. checkout total is exact
+9. discount math is exact
+10. debt partial payment
+11. debt cannot become negative
+12. gift card partial redemption
+13. gift card cannot overdraw
+14. expired gift card cannot redeem
+15. wallet cannot overdraw
+16. loyalty cannot become negative
+17. low-stock detection
+18. high-stock detection
+19. top-selling product calculation
+20. least-selling product calculation
+21. top buyer calculation
+22. highest debtor calculation
+23. payment state transitions
+24. payment idempotency
+25. callback replay idempotency
+26. offline operation replay idempotency
+27. role authorization
+28. audit record creation
+
+E2E TESTS REQUIRED
+1. owner login
+2. manager login
+3. cashier login
+4. waiter login
+5. unauthorized action is blocked
+6. desktop dashboard
+7. mobile dashboard
+8. mobile navigation
+9. bottle cash sale
+10. shot/tot cash sale
+11. held order
+12. resume order
+13. open table
+14. transfer table
+15. split bill
+16. customer creation
+17. debt creation
+18. partial debt payment
+19. gift card creation
+20. gift card partial redemption
+21. insufficient gift card balance
+22. inventory receive
+23. inventory adjustment
+24. low-stock alert
+25. AI business question
+26. electronic payment pending
+27. sandbox electronic payment success
+28. payment failure
+29. payment reversal
+30. duplicate callback does not duplicate payment
+31. offline cash sale queues
+32. reconnect syncs once
+33. receipt view
+34. responsive layouts on desktop + iPhone-size viewport
+
+==================================================
+IMPLEMENTATION ORDER
+==================================================
+
+PHASE 1 — VERIFY EXISTING REPOSITORY
+- install
+- typecheck
+- lint
+- unit tests
+- build
+- fix everything
+
+PHASE 2 — SUPABASE
+- auth
+- schema
+- RLS
+- repositories
+- transactions
+- demo/local mode retained
+
+PHASE 3 — CORE OPERATIONS
+- POS
+- stock
+- tables
+- customers
+- debt
+- gift cards
+- wallet
+- expenses
+- staff
+
+PHASE 4 — PAYMENT ENGINE
+- internal payment state machine
+- test adapter
+- Eganow implementation only after real merchant docs supplied
+
+PHASE 5 — BUSINESS INTELLIGENCE
+- trusted analytics
+- AI assistant
+- reports
+- warnings
+
+PHASE 6 — PWA + OFFLINE
+- installability
+- queue
+- sync
+- printer abstraction
+- performance
+
+PHASE 7 — TEST + SECURITY + RELEASE
+Run:
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+
+Fix every error.
+
+==================================================
+RELEASE SUCCESS CRITERIA
+==================================================
+
+The finished application must have:
+- zero TypeScript errors
+- zero lint errors
+- passing unit tests
+- passing Playwright critical flows
+- no TODOs
+- no fake production payment responses
+- no committed secrets
+- no negative inventory
+- no negative debt/gift/wallet balances
+- no duplicate electronic payments
+- no duplicate offline transactions
+- auditable stock and accounting events
+- responsive desktop/tablet/mobile UX
+- installable PWA
+- clear offline state
+- role-based access
+- real Supabase persistence
+- AI grounded in real business analytics
+
+FINAL WINDSURF HANDOFF MUST INCLUDE
+1. completed codebase
+2. Supabase migrations
+3. environment template
+4. setup guide
+5. deployment guide
+6. test report
+7. security checklist
+8. Eganow integration guide based ONLY on supplied official merchant documentation
+9. owner quick-start
+10. cashier quick-start
+11. waiter quick-start
+12. backup/recovery notes
+
+Do not stop at scaffolding. Finish, validate and test each phase before moving to the next.
+
+==================================================
+W+C+D+T CONTINUATION — IMPLEMENT THESE FILES NOW
+==================================================
+
+The repository now additionally contains:
+- supabase/migrations/002_transactional_operations.sql
+- lib/payments/state-machine.ts
+- lib/offline/queue.ts
+- lib/auth/roles.ts
+- tests/payment-state.test.ts
+- tests/roles.test.ts
+- docs/RELEASE_CHECKLIST.md
+
+W:
+Review the new SQL transaction functions carefully. Integrate them through typed server repositories. Add tests against a Supabase test project for transactional checkout, debt payment and gift-card redemption. Tighten SECURITY DEFINER functions so callers can only act within their authenticated role.
+
+C:
+Replace remaining demo store mutations with repository-backed operations. Keep demo mode available behind an explicit environment setting. Add real login/session routes, protected application routes, typed data mappers and deterministic checkout orchestration.
+
+D:
+Implement the offline queue using IndexedDB for production durability, retaining the localStorage implementation only as a minimal fallback. Add a sync worker, connection indicator, per-operation status UI, retry/backoff, and duplicate prevention. Electronic MoMo/card payments must never be finalized offline.
+
+T:
+Expand unit and Playwright coverage until every critical accounting, inventory, role, gift-card, debt, payment-state, offline-sync and responsive-navigation rule in this master prompt is tested. Run the complete verification chain before declaring completion.

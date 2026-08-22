@@ -1,0 +1,15 @@
+WINDSURF START HERE
+
+1. Open this whole folder in Windsurf.
+2. Read WINDSURF_MASTER_PROMPT.txt in full.
+3. Read docs/PRODUCTION_ARCHITECTURE.md.
+4. Run:
+   npm install
+   npm run typecheck
+   npm run lint
+   npm run test
+   npm run build
+5. Fix all existing errors first.
+6. Connect Supabase and apply migrations.
+7. Work through W, C, D and T in the master prompt.
+8. Do not connect live Eganow network calls until the actual Eganow merchant API documentation and credentials are available.

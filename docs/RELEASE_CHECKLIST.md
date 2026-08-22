@@ -1,0 +1,31 @@
+# EMD Release Checklist
+
+- [ ] `npm install` completes.
+- [ ] `npm run typecheck` passes.
+- [ ] `npm run lint` passes.
+- [ ] `npm run test` passes.
+- [ ] `npm run build` passes.
+- [ ] Playwright browsers are installed.
+- [ ] `npm run test:e2e` passes.
+- [ ] Supabase project is created.
+- [ ] Migration `001_initial_schema.sql` applied.
+- [ ] Migration `002_transactional_operations.sql` applied.
+- [ ] First owner account created.
+- [ ] RLS tested with owner, manager, cashier and waiter.
+- [ ] Production environment variables configured.
+- [ ] Eganow merchant documentation received and reviewed.
+- [ ] Eganow sandbox transactions verified before production.
+- [ ] Webhook/callback authentication verified against official Eganow merchant specification.
+- [ ] Raw card number/CVV is never persisted or logged.
+- [ ] Cash checkout verified.
+- [ ] Bottle and shot/tot inventory verified.
+- [ ] Gift-card partial redemption verified.
+- [ ] Debt partial payment verified.
+- [ ] Offline mode tested without electronic-payment finalization.
+- [ ] Duplicate/replayed operations do not duplicate sales or payments.
+- [ ] AI assistant is read-only and grounded in business aggregates.
+- [ ] Mobile 390px layout checked.
+- [ ] Tablet layout checked.
+- [ ] Desktop cashier layout checked.
+- [ ] Receipt print layout checked.
+- [ ] Backup/recovery process documented.

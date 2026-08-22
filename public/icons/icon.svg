@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#050505"/>
+  <rect x="8" y="8" width="496" height="496" rx="88" fill="none" stroke="#d4af37" stroke-width="4"/>
+  <text x="256" y="200" font-family="Georgia, serif" font-size="120" font-weight="bold" fill="#d4af37" text-anchor="middle">EMD</text>
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="28" fill="#d4af37" text-anchor="middle" letter-spacing="4">DRINKING</text>
+  <text x="256" y="320" font-family="Arial, sans-serif" font-size="28" fill="#d4af37" text-anchor="middle" letter-spacing="4">SPORTS</text>
+  <path d="M160 380 Q256 360 352 380" stroke="#d4af37" stroke-width="3" fill="none"/>
+  <circle cx="256" cy="430" r="8" fill="#d4af37"/>
+</svg>

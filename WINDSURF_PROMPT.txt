@@ -1,0 +1,175 @@
+You are continuing an existing production-oriented Next.js application named EMD DRINKING SPORTS APP.
+
+DO NOT rebuild the UI from scratch.
+DO NOT remove working features.
+Read the entire repository first.
+
+GOAL:
+Evolve this working responsive web app into a production Ghana sports-bar operating system.
+
+CURRENT STACK:
+- Next.js 16.3 App Router
+- React 19.2
+- TypeScript
+- Zustand
+- Recharts
+- CSS design system
+- server API routes
+
+BRAND:
+- Black
+- White
+- Gold
+- Yellow
+- premium dark sports lounge design
+
+CURRENT MODULES:
+- Dashboard
+- POS
+- bottle sales
+- shots/tots
+- tables
+- inventory
+- customers
+- debts
+- payments
+- Eganow adapter
+- gift cards
+- loyalty
+- reports
+- AI assistant
+- football events
+- expenses
+- staff
+- settings
+
+FIRST TASK:
+1. Run npm install.
+2. Run npm run build.
+3. Fix every build/type/lint issue without deleting functionality.
+4. Preserve responsive mobile + desktop UI.
+5. Add tests for POS bottle/shot stock calculations.
+6. Add Supabase.
+
+SUPABASE:
+Create production schema, migrations, Row Level Security, auth and repositories for:
+profiles
+products
+stock_movements
+orders
+order_lines
+customers
+debts
+debt_payments
+tables
+payments
+gift_cards
+gift_card_transactions
+wallets
+wallet_transactions
+expenses
+matches
+
+ROLES:
+owner
+manager
+cashier
+waiter
+
+RULES:
+- Currency is GHS.
+- Money uses integer pesewas in the database to avoid floating-point accounting errors.
+- All stock-changing sales are transactional.
+- Every stock movement has an audit trail.
+- Shot/tot sales must never create negative inventory.
+- Product has shots_per_bottle and open_bottle_shots_remaining.
+- Opening a bottle for a shot sale must be auditable.
+- Debt payments allow partial payments.
+- Gift cards require unique codes, balance ledger and expiry/status.
+- All electronic payment transactions require idempotency keys.
+- Payment callbacks/webhooks must be verified using Eganow's merchant documentation.
+- Never store raw card number or CVV.
+- Never place server secrets in NEXT_PUBLIC variables.
+
+EGANOW:
+The repository intentionally does not invent undocumented Eganow endpoints.
+Use the merchant documentation/credentials supplied by the user.
+Keep all secrets server-side.
+Implement:
+- initiate Mobile Money payment
+- card checkout using Eganow-supported secure/hosted/approved flow
+- verify transaction
+- webhook/callback processing
+- idempotency
+- reconciliation
+- pending/success/failed/reversed states
+- MTN Mobile Money
+- Telecel
+- AirtelTigo
+- international cards where enabled by merchant account
+
+AI ASSISTANT:
+Use the existing /api/ai server route and business snapshots.
+Then improve it to use server-side authenticated Supabase analytics.
+The AI must answer:
+- who owes most
+- who buys most
+- top-selling product
+- least-selling product
+- low stock
+- high stock
+- slow-moving stock
+- daily/weekly/monthly progress
+- cash vs MoMo vs card mix
+- unusual problems needing attention
+Never let AI directly mutate accounting data.
+AI recommendations are read-only unless a human confirms a separate deterministic operation.
+
+PWA:
+Make the web app installable.
+Add:
+- manifest
+- icons
+- service worker / offline shell
+- offline POS queue
+- conflict-safe sync
+- visible online/offline state
+
+QUALITY:
+- no TODOs
+- no fake API responses
+- no invented Eganow endpoint names
+- no card-data handling that violates PCI principles
+- strict TypeScript
+- responsive accessibility
+- keyboard usable desktop POS
+- touch targets suitable for phones/tablets
+- route-level error boundaries
+- loading states
+- empty states
+- optimistic UI only where safe
+
+TEST:
+Add Vitest unit tests and Playwright critical flows:
+- bottle sale
+- shot sale
+- shot opens a new bottle correctly
+- stock cannot go negative
+- debt partial payment
+- gift card redemption
+- gift card insufficient balance
+- cash checkout
+- electronic payment pending state
+- payment replay/idempotency
+- offline sale queue
+- dashboard analytics
+
+DEPLOY:
+Prepare for Vercel.
+Document env variables and Supabase migration commands.
+
+FINISH:
+The repository must pass:
+npm run build
+npm run lint
+and all tests you add.

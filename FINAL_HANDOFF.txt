@@ -1,0 +1,25 @@
+EMD DRINKING SPORTS APP — FINAL WINDSURF HANDOFF
+
+1. Open this entire folder in Windsurf.
+2. Read WINDSURF_MASTER_PROMPT.txt fully.
+3. Read docs/PRODUCTION_ARCHITECTURE.md.
+4. Read docs/RELEASE_CHECKLIST.md.
+5. Run:
+   npm install
+   npm run typecheck
+   npm run lint
+   npm run test
+   npm run build
+6. Fix every issue before feature expansion.
+7. Connect Supabase and apply migrations in order.
+8. Preserve the approved black / white / gold / yellow UI.
+9. Complete W + C + D + T phases in WINDSURF_MASTER_PROMPT.txt.
+10. Do not connect live Eganow endpoints until the real merchant API documentation and credentials are supplied.
+11. Keep Eganow and OpenAI secrets server-side.
+12. Never store PAN/CVV.
+13. Do not finalize electronic payments from client-side success alone.
+14. Make all stock/payment/debt/gift-card/offline operations idempotent and auditable.
+15. Finish only when typecheck, lint, unit tests, build, and Playwright critical flows pass.
+
+FINAL TARGET:
+A production-ready responsive Ghana sports bar management platform for desktop, tablet, Android, iPhone and installable PWA use.
