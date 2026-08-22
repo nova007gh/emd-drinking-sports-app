@@ -265,8 +265,11 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   if (pendingPayments.length > 0) attentionItems.push({ text: `${pendingPayments.length} pending payments`, danger: true });
   if (insights.slowMoving.length > 0) attentionItems.push({ text: `${insights.slowMoving.length} slow-moving products`, danger: false });
 
+  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
   return <>
-    <div className="page-title"><div><p>WELCOME BACK</p><h1>Business Dashboard</h1></div><button className="primary" onClick={() => onNavigate("POS / Sales")}><Plus size={18}/> New sale</button></div>
+    <div className="page-title"><div><p>WELCOME BACK</p><h1>Business Dashboard</h1><span>{todayStr}</span></div><button className="primary" onClick={() => onNavigate("POS / Sales")}><Plus size={18}/> New sale</button></div>
+
     <div className="metric-grid">
       <Metric label="TODAY'S SALES" value={money(revenueTrend.today)} sub="live total" trend={revenueTrend} icon={<CircleDollarSign/>}/>
       <Metric label="ITEMS SOLD" value={String(unitsTrend.today)} sub="today" trend={unitsTrend} icon={<Beer/>}/>
@@ -275,31 +278,31 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
       <Metric label="LOW STOCK ITEMS" value={String(insights.lowStock.length)} sub="View items" danger icon={<AlertTriangle/>} onSubClick={()=>onNavigate("Inventory")}/>
     </div>
 
-    <div className="metric-grid second-row">
-      <Metric label="EST. PROFIT" value={money(profit)} sub="revenue - COGS - expenses" icon={<TrendingUp/>}/>
-      <Metric label="EXPENSES" value={money(expenseTotal)} sub={`${expenses.length} recorded`} icon={<CircleDollarSign/>}/>
-      <Metric label="OVERDUE DEBT" value={money(aging.overdue)} sub="past due date" danger icon={<Clock/>}/>
-      <Metric label="BEST SELLER" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} icon={<Package/>}/>
-      <Metric label="TOP CUSTOMER" value={insights.topBuyer?.name ?? "—"} sub={money(insights.topBuyer?.totalSpent ?? 0)} icon={<Users/>}/>
+    <div className="insight-card-row">
+      <InsightCard tone="gold" icon={<Trophy/>} label="Top Selling" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} footer="Today"/>
+      <InsightCard tone="red" icon={<TrendingDown/>} label="Least Selling" value={insights.leastSeller?.name ?? "—"} sub={`${insights.leastSeller?.units ?? 0} units`} footer="Today"/>
+      <InsightCard tone="gold" icon={<AlertTriangle/>} label="Low Stock Alert" value={`${insights.lowStock.length} Items`} sub="Need attention" footer="View Items" onClick={()=>onNavigate("Inventory")}/>
+      <InsightCard tone="green" icon={<Package/>} label="High Inventory" value={insights.highStock[0]?.name ?? "—"} sub={`${insights.highStock[0]?.stock ?? 0} in stock`} footer="In Stock"/>
+      <InsightCard tone="red" icon={<Users/>} label="Customers Owing" value={`${customersOwing.length} Customers`} sub="Owing > GHS 200" footer="View Debtors" onClick={()=>onNavigate("Debts")}/>
     </div>
 
     <div className="dashboard-grid">
       <Panel title="Sales overview" className="span2" action={<span className="panel-tag">This Week</span>}>
         <div className="chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={weeklySeries}>
-          <XAxis dataKey="name" stroke="#747474"/><YAxis stroke="#747474"/><Tooltip contentStyle={{background:"#111",border:"1px solid #333"}}/>
-          <Line type="monotone" dataKey="value" stroke="#f9c317" strokeWidth={3} dot={{fill:"#f9c317"}}/>
+          <XAxis dataKey="name" stroke="#747474" fontSize={11}/><YAxis stroke="#747474" fontSize={11}/><Tooltip contentStyle={{background:"#111315",border:"1px solid #333",borderRadius:"10px",fontSize:"12px"}}/>
+          <Line type="monotone" dataKey="value" stroke="#f9c317" strokeWidth={3} dot={{fill:"#f9c317",r:4}} activeDot={{r:6}}/>
         </LineChart></ResponsiveContainer></div>
       </Panel>
       <Panel title="Top selling products" action={<span className="panel-tag">This Week</span>}>
         <ol className="rank-list">
           {topSelling.length === 0 && <li className="muted-text">No sales recorded yet.</li>}
           {topSelling.map((p, i) => (
-            <li key={p.id}><span className="rank-num">{i+1}</span><span className="rank-name">{p.name} ({p.shotPrice?"Bottle":"Bottle"})</span><b>{p.units}</b></li>
+            <li key={p.id}><span className="rank-num">{i+1}</span><span className="rank-name">{p.name}</span><b>{p.units} units</b></li>
           ))}
         </ol>
       </Panel>
       <Panel title="Sales by payment method">
-        <div className="chart small"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={paymentData} dataKey="value" innerRadius={55} outerRadius={80}>
+        <div className="chart small"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={paymentData} dataKey="value" innerRadius={55} outerRadius={80} paddingAngle={3}>
           {paymentData.map((_, i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
         </Pie></PieChart></ResponsiveContainer></div>
         <div className="legend">{paymentData.map((d,i)=>(
@@ -313,7 +316,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
           <tbody>
             {insights.lowStock.length === 0 && <tr><td colSpan={4} className="muted-text">All products healthy.</td></tr>}
             {insights.lowStock.slice(0,5).map(p=>(
-              <tr key={p.id}><td>{p.name} (Bottle)</td><td>{p.stock}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td></tr>
+              <tr key={p.id}><td><b>{p.name}</b></td><td>{p.stock}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td></tr>
             ))}
           </tbody>
         </table></div>
@@ -337,12 +340,12 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
       </Panel>
     </div>
 
-    <div className="insight-card-row">
-      <InsightCard tone="gold" icon={<Trophy/>} label="Top Selling" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} footer="Today"/>
-      <InsightCard tone="red" icon={<TrendingDown/>} label="Least Selling" value={insights.leastSeller?.name ?? "—"} sub={`${insights.leastSeller?.units ?? 0} units`} footer="Today"/>
-      <InsightCard tone="gold" icon={<AlertTriangle/>} label="Low Stock Alert" value={`${insights.lowStock.length} Items`} sub="Need attention" footer="View Items" onClick={()=>onNavigate("Inventory")}/>
-      <InsightCard tone="green" icon={<Package/>} label="High Inventory" value={insights.highStock[0]?.name ?? "—"} sub={`${insights.highStock[0]?.stock ?? 0} in stock`} footer="In Stock"/>
-      <InsightCard tone="red" icon={<Users/>} label="Customers Owing" value={`${customersOwing.length} Customers`} sub="Owing > GHS 200" footer="View Debtors" onClick={()=>onNavigate("Debts")}/>
+    <div className="metric-grid second-row">
+      <Metric label="EST. PROFIT" value={money(profit)} sub="revenue - COGS - expenses" icon={<TrendingUp/>}/>
+      <Metric label="EXPENSES" value={money(expenseTotal)} sub={`${expenses.length} recorded`} icon={<CircleDollarSign/>}/>
+      <Metric label="OVERDUE DEBT" value={money(aging.overdue)} sub="past due date" danger icon={<Clock/>}/>
+      <Metric label="BEST SELLER" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} icon={<Package/>}/>
+      <Metric label="TOP CUSTOMER" value={insights.topBuyer?.name ?? "—"} sub={money(insights.topBuyer?.totalSpent ?? 0)} icon={<Users/>}/>
     </div>
 
     <div className="dashboard-grid second-row">
@@ -789,7 +792,20 @@ function Inventory() {
     setNewName(""); setNewPrice(""); setShowAdd(false);
   };
 
+  const totalProducts = products.length;
+  const lowStockCount = products.filter(p => p.stock <= p.reorderLevel && p.active).length;
+  const healthyCount = products.filter(p => p.stock > p.reorderLevel && p.active).length;
+  const totalStockValue = products.reduce((s, p) => s + p.stock * p.bottlePrice, 0);
+
   return <PageBox title="Inventory" subtitle="Bottle stock and open-shot inventory">
+    <div className="metric-grid" style={{marginBottom:16}}>
+      <Metric label="TOTAL PRODUCTS" value={String(totalProducts)} sub={`${products.filter(p=>p.active).length} active`} icon={<Package/>}/>
+      <Metric label="LOW STOCK" value={String(lowStockCount)} sub="Need restocking" danger={lowStockCount>0} icon={<AlertTriangle/>}/>
+      <Metric label="HEALTHY STOCK" value={String(healthyCount)} sub="Above reorder level" icon={<CheckCircle2/>}/>
+      <Metric label="STOCK VALUE" value={money(totalStockValue)} sub="At bottle price" icon={<CircleDollarSign/>}/>
+      <Metric label="CATEGORIES" value={String(new Set(products.map(p=>p.category)).size)} sub="Product types" icon={<Boxes/>}/>
+    </div>
+
     <div className="inline-form">
       {can("manage_inventory") && <button className="primary" onClick={() => setShowAdd(!showAdd)}><Plus/> Add product</button>}
       <button className="secondary" onClick={() => setShowMovements(!showMovements)}><Package/> Movement history</button>
@@ -817,7 +833,7 @@ function Inventory() {
 
     <div className="responsive-table">
       <table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Shots left</th><th>Reorder</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>{products.map(p=><tr key={p.id}><td><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td>{p.stock}</td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><Status ok={p.stock>p.reorderLevel} label={p.stock>p.reorderLevel?"Healthy":"Low stock"}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
+        <tbody>{products.map(p=><tr key={p.id}><td><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
     </div>
   </PageBox>;
 }
@@ -1000,6 +1016,11 @@ function AIAssistant() {
     {who:"ai", text:`I can analyse EMD sales, stock and debts. Right now ${insights.topDebtor?.name ?? "no customer"} has the highest debt.`}
   ]);
   const [busy,setBusy]=useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy]);
 
   const localAnswer=(q:string)=>{
     const s=q.toLowerCase();
@@ -1023,14 +1044,29 @@ function AIAssistant() {
     setBusy(false);
   };
 
+  const prompts = [
+    { q: "Who owes the most?", icon: <ReceiptText size={14}/> },
+    { q: "What is selling most?", icon: <TrendingUp size={14}/> },
+    { q: "What is selling less?", icon: <TrendingDown size={14}/> },
+    { q: "Which stock is low?", icon: <AlertTriangle size={14}/> },
+    { q: "Who is buying more?", icon: <Users size={14}/> }
+  ];
+
   return <PageBox title="EMD AI Assistant" subtitle="Ask your bar what is working, what is wrong and what needs attention">
     <div className="ai-layout">
-      <div className="assistant-card"><div className="bot-orb"><Bot/></div><h2>Business intelligence</h2><p>Grounded in your sales, inventory and customer data.</p>
-        <div className="prompt-chips">{["Who owes the most?","What is selling most?","What is selling less?","Which stock is low?","Who is buying more?"].map(q=><button key={q} onClick={()=>setQuestion(q)}>{q}</button>)}</div>
+      <div className="assistant-card">
+        <div className="bot-orb"><Bot/></div>
+        <h2>Business Intelligence</h2>
+        <p>Grounded in your sales, inventory and customer data. Ask me anything about your bar operations.</p>
+        <div className="prompt-chips">{prompts.map(p=><button key={p.q} onClick={()=>setQuestion(p.q)}>{p.icon} {p.q}</button>)}</div>
       </div>
       <div className="chat">
-        <div className="messages">{messages.map((m,i)=><div key={i} className={`bubble ${m.who}`}>{m.text}</div>)}</div>
-        <div className="chat-input"><input value={question} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setQuestion(e.target.value)} onKeyDown={(e:React.KeyboardEvent<HTMLInputElement>)=>e.key==="Enter"&&ask()} placeholder="Ask about your business…"/><button onClick={ask} disabled={busy}><ArrowUpRight/></button></div>
+        <div className="messages">
+          {messages.map((m,i)=><div key={i} className={`bubble ${m.who}`}>{m.text}</div>)}
+          {busy && <div className="typing-indicator"><span/><span/><span/></div>}
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="chat-input"><input value={question} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setQuestion(e.target.value)} onKeyDown={(e:React.KeyboardEvent<HTMLInputElement>)=>e.key==="Enter"&&ask()} placeholder="Ask about your business…" disabled={busy}/><button onClick={ask} disabled={busy}><ArrowUpRight/></button></div>
       </div>
     </div>
   </PageBox>;
