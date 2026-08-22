@@ -582,3 +582,11 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-chat-input input{flex:1;background:transparent;border:0;color:#fff;outline:none;font-size:12px;padding:6px}
 .portal-chat-input button{width:34px;height:34px;border:0;border-radius:8px;background:var(--yellow);color:#000;display:grid;place-items:center;cursor:pointer;transition:var(--transition)}
 .portal-chat-input button:hover{transform:scale(1.05)}
+.portal-pay-btn{margin-top:10px;width:100%}
+.portal-pay-section{margin-top:10px;padding:12px;background:#111315;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.portal-pay-section small{font-size:11px;color:var(--muted)}
+.portal-pay-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.portal-pay-methods button{display:flex;flex-direction:column;align-items:center;gap:3px;background:#17191b;border:1px solid var(--line);color:#c8c8c8;border-radius:8px;padding:8px 4px;font-size:9px;font-weight:600;cursor:pointer;transition:var(--transition)}
+.portal-pay-methods button.active{border-color:var(--yellow);color:var(--yellow);background:rgba(249,195,23,.08)}
+.portal-pay-methods button:hover:not(.active){border-color:#3a3d41}
+.portal-btn-cancel{background:none;border:0;color:var(--muted);font-size:11px;cursor:pointer;padding:4px}

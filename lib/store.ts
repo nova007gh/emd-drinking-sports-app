@@ -589,6 +589,30 @@ export const useAppStore = create<AppState>()(
         }
       }
     }),
-    { name: "emd-drinking-sports-v2" }
+    {
+      name: "emd-drinking-sports-v3",
+      version: 3,
+      migrate: (persistedState: unknown, version: number) => {
+        const s = persistedState as Partial<AppState> | undefined;
+        // On upgrade from v1/v2, reset products and matches to latest seed
+        if (version < 3 && s) {
+          s.products = productsSeed;
+          s.matches = matchesSeed;
+          s.tables = tablesSeed;
+          s.staff = staffSeed;
+          s.customers = customersSeed;
+          s.giftCards = giftCardsSeed;
+          s.debts = debtsSeed;
+          s.sales = salesSeed;
+          s.expenses = expensesSeed;
+          if (!s.customerOrders) s.customerOrders = [];
+          if (!s.waiterCalls) s.waiterCalls = [];
+          if (!s.chatMessages) s.chatMessages = [];
+          if (!s.eventBookings) s.eventBookings = [];
+          if (s.barOpen === undefined) s.barOpen = true;
+        }
+        return s as AppState;
+      }
+    }
   )
 );

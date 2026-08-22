@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Minus, Clock, Users, Trophy, Calendar,
   CheckCircle2, AlertTriangle, Phone, MessageSquare, Bell, MapPin,
   Star, Wallet, Receipt, ArrowRight, Home, ShoppingBag, Utensils,
-  Loader2, PartyPopper
+  Loader2, PartyPopper, Smartphone, CircleDollarSign
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
@@ -412,7 +412,14 @@ function PortalTables({ selectedTableId, onSelect }: { selectedTableId: string |
 
 function PortalOrders({ customerId }: { customerId: string }) {
   const customerOrders = useAppStore(s => s.customerOrders);
+  const customers = useAppStore(s => s.customers);
+  const updateCustomerOrderStatus = useAppStore(s => s.updateCustomerOrderStatus);
+  const spendWallet = useAppStore(s => s.spendWallet);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<"wallet" | "momo" | "cash">("wallet");
+  const [paidId, setPaidId] = useState<string | null>(null);
   const myOrders = customerOrders.filter(o => o.customerId === customerId);
+  const customer = customers.find(c => c.id === customerId);
 
   const statusLabels: Record<string, { label: string; color: string }> = {
     pending: { label: "Pending", color: "#f97316" },
@@ -421,10 +428,23 @@ function PortalOrders({ customerId }: { customerId: string }) {
     paid: { label: "Paid", color: "#92969c" }
   };
 
+  const handlePay = (orderId: string, total: number) => {
+    if (payMethod === "wallet") {
+      if (!spendWallet(customerId, total)) {
+        alert("Insufficient wallet balance. Please use MoMo or cash.");
+        return;
+      }
+    }
+    updateCustomerOrderStatus(orderId, "paid");
+    setPayingId(null);
+    setPaidId(orderId);
+    setTimeout(() => setPaidId(null), 3000);
+  };
+
   return (
     <div className="portal-section">
       <h2 className="portal-title">My Orders</h2>
-      <p className="portal-subtitle">Track your orders in real time</p>
+      <p className="portal-subtitle">Track your orders and pay from your phone</p>
 
       {myOrders.length === 0 ? (
         <div className="portal-empty">
@@ -436,6 +456,8 @@ function PortalOrders({ customerId }: { customerId: string }) {
           {myOrders.map(o => {
             const total = o.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
             const status = statusLabels[o.status];
+            const canPay = o.status === "served";
+            const isPaying = payingId === o.id;
             return (
               <div key={o.id} className="portal-order-card">
                 <div className="portal-order-header">
@@ -459,6 +481,40 @@ function PortalOrders({ customerId }: { customerId: string }) {
                   <Clock size={12} />
                   {new Date(o.createdAt).toLocaleString()}
                 </div>
+
+                {canPay && !isPaying && (
+                  <button className="portal-btn-primary portal-pay-btn" onClick={() => setPayingId(o.id)}>
+                    <Wallet size={16} /> Pay {money(total)}
+                  </button>
+                )}
+
+                {canPay && isPaying && (
+                  <div className="portal-pay-section">
+                    <small>Select payment method:</small>
+                    <div className="portal-pay-methods">
+                      <button className={payMethod === "wallet" ? "active" : ""} onClick={() => setPayMethod("wallet")}>
+                        <Wallet size={14} /> Wallet ({customer ? money(customer.walletBalance) : ""})
+                      </button>
+                      <button className={payMethod === "momo" ? "active" : ""} onClick={() => setPayMethod("momo")}>
+                        <Smartphone size={14} /> MoMo
+                      </button>
+                      <button className={payMethod === "cash" ? "active" : ""} onClick={() => setPayMethod("cash")}>
+                        <CircleDollarSign size={14} /> Cash
+                      </button>
+                    </div>
+                    <button className="portal-btn-primary" onClick={() => handlePay(o.id, total)}>
+                      <CheckCircle2 size={16} /> Confirm Payment {money(total)}
+                    </button>
+                    <button className="portal-btn-cancel" onClick={() => setPayingId(null)}>Cancel</button>
+                  </div>
+                )}
+
+                {paidId === o.id && (
+                  <div className="portal-success">
+                    <CheckCircle2 size={18} />
+                    <span>Payment successful! Thank you.</span>
+                  </div>
+                )}
               </div>
             );
           })}
