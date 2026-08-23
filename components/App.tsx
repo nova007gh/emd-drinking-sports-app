@@ -723,11 +723,27 @@ function CustomerOrdersPanel() {
 
   const pendingCalls = waiterCalls.filter(c => c.status === "pending");
 
-  if (customerOrders.length === 0 && pendingCalls.length === 0) return null;
+  if (customerOrders.length === 0 && pendingCalls.length === 0) {
+    return (
+      <div className="customer-orders-panel">
+        <h3 className="panel-title">
+          Customer Activity
+          <span className="live-indicator"><span className="live-dot" /> Live</span>
+        </h3>
+        <div className="customer-activity-empty">
+          <ReceiptText size={32} />
+          <p>No customer activity yet. Customers can place orders from the <a href="/portal" target="_blank" rel="noopener noreferrer" className="inline-link">Customer Portal</a>.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="customer-orders-panel">
-      <h3 className="panel-title">Customer Activity</h3>
+      <h3 className="panel-title">
+        Customer Activity
+        <span className="live-indicator"><span className="live-dot" /> Live</span>
+      </h3>
 
       {pendingCalls.length > 0 && (
         <div className="waiter-calls-section">

@@ -654,7 +654,13 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-waiter-hint{font-size:10px;color:var(--muted)}
 /* Customer orders panel (staff side) */
 .customer-orders-panel{margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:linear-gradient(145deg,#0e1011,#0a0b0c)}
-.customer-orders-panel .panel-title{font-size:16px;margin:0 0 14px}
+.customer-orders-panel .panel-title{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.live-indicator{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-left:auto}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite}
+.customer-activity-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;text-align:center;color:var(--muted)}
+.customer-activity-empty p{font-size:12px;margin:0;line-height:1.5}
+.inline-link{color:var(--yellow);text-decoration:none;font-weight:600}
+.inline-link:hover{text-decoration:underline}
 .waiter-calls-section{margin-bottom:18px}
 .waiter-calls-section h4{display:flex;align-items:center;gap:6px;font-size:13px;margin:0 0 10px;color:var(--yellow)}
 .customer-orders-section h4{display:flex;align-items:center;gap:6px;font-size:13px;margin:0 0 10px;color:var(--blue)}

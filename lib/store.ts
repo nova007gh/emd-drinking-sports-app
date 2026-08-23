@@ -627,3 +627,29 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// Cross-tab sync: when another tab changes localStorage, reload the store
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "emd-drinking-sports-v4" && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed?.state) {
+          useAppStore.setState({
+            ...parsed.state,
+            // Always keep latest seed data
+            products: productsSeed,
+            tables: tablesSeed,
+            staff: staffSeed,
+            customers: customersSeed,
+            giftCards: giftCardsSeed,
+            debts: debtsSeed,
+            sales: salesSeed,
+            expenses: expensesSeed,
+            matches: matchesSeed,
+          });
+        }
+      } catch { /* ignore parse errors */ }
+    }
+  });
+}
