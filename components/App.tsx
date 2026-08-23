@@ -128,12 +128,16 @@ function AppInner() {
           <div><strong>EMD</strong><span>DRINKING SPORTS APP</span><em>BAR &amp; LOUNGE MANAGEMENT</em></div>
         </div>
         <nav>
-          {filteredNav.map(({ label, icon: Icon }) => (
+          {filteredNav.map(({ label, icon: Icon }) => {
+            const tableAlerts = label === "Tables" ? (useAppStore.getState().customerOrders.filter(o => o.status !== "paid").length + useAppStore.getState().waiterCalls.filter(c => c.status === "pending").length) : 0;
+            return (
             <button key={label} className={page === label ? "active" : ""} onClick={() => { setPage(label); setMobileNav(false); }}>
               <Icon size={18}/><span>{label}</span>
               {label === "AI Assistant" && <span className="nav-badge">New</span>}
+              {tableAlerts > 0 && <span className="nav-badge alert">{tableAlerts}</span>}
             </button>
-          ))}
+            );
+          })}
         </nav>
         {footballMode && featuredMatch && (
           <button className="big-match-card" onClick={() => { setPage("Event Management"); setMobileNav(false); }}>
@@ -701,6 +705,94 @@ function POS() {
   </>;
 }
 
+function CustomerOrdersPanel() {
+  const customerOrders = useAppStore(s => s.customerOrders);
+  const customers = useAppStore(s => s.customers);
+  const tables = useAppStore(s => s.tables);
+  const updateCustomerOrderStatus = useAppStore(s => s.updateCustomerOrderStatus);
+  const waiterCalls = useAppStore(s => s.waiterCalls);
+  const updateWaiterCall = useAppStore(s => s.updateWaiterCall);
+  const { can } = useAuth();
+
+  const statusFlow: Array<{ key: "pending" | "preparing" | "served" | "paid"; label: string; next?: "preparing" | "served" | "paid"; nextLabel?: string }> = [
+    { key: "pending", label: "Pending", next: "preparing", nextLabel: "Start Preparing" },
+    { key: "preparing", label: "Preparing", next: "served", nextLabel: "Mark Served" },
+    { key: "served", label: "Served", next: "paid", nextLabel: "Mark Paid" },
+    { key: "paid", label: "Paid" }
+  ];
+
+  const pendingCalls = waiterCalls.filter(c => c.status === "pending");
+
+  if (customerOrders.length === 0 && pendingCalls.length === 0) return null;
+
+  return (
+    <div className="customer-orders-panel">
+      <h3 className="panel-title">Customer Activity</h3>
+
+      {pendingCalls.length > 0 && (
+        <div className="waiter-calls-section">
+          <h4><Bell size={14} /> Waiter Calls ({pendingCalls.length})</h4>
+          {pendingCalls.map(c => {
+            const table = tables.find(t => t.id === c.tableId);
+            return (
+              <div key={c.id} className="waiter-call-card">
+                <div>
+                  <strong>{table?.name ?? "Unknown table"}</strong>
+                  <small>{c.message ?? "Table is calling for service"}</small>
+                  <small className="call-time">{new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
+                </div>
+                <button className="mini btn-primary" onClick={() => updateWaiterCall(c.id, { status: "arrived" })}>
+                  <CheckCircle2 size={12} /> Arrived
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {customerOrders.length > 0 && (
+        <div className="customer-orders-section">
+          <h4><ReceiptText size={14} /> Customer Orders ({customerOrders.length})</h4>
+          {customerOrders.map(o => {
+            const customer = customers.find(c => c.id === o.customerId);
+            const table = tables.find(t => t.id === o.tableId);
+            const total = o.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+            const statusInfo = statusFlow.find(s => s.key === o.status)!;
+            return (
+              <div key={o.id} className="customer-order-card">
+                <div className="customer-order-top">
+                  <div>
+                    <strong>Order #{o.id.slice(-4)}</strong>
+                    <small>{customer?.name ?? "Walk-in"} • {table?.name ?? "No table"}</small>
+                  </div>
+                  <span className={`customer-order-status ${o.status}`}>{statusInfo.label}</span>
+                </div>
+                <div className="customer-order-items">
+                  {o.lines.map(l => (
+                    <div key={l.id} className="customer-order-item">
+                      <span>{l.quantity}x {l.name}</span>
+                      <b>{money(l.unitPrice * l.quantity)}</b>
+                    </div>
+                  ))}
+                </div>
+                {o.note && <div className="customer-order-note">Note: {o.note}</div>}
+                <div className="customer-order-bottom">
+                  <span className="customer-order-total">Total: <b>{money(total)}</b></span>
+                  {statusInfo.next && can("sell") && (
+                    <button className="mini btn-primary" onClick={() => updateCustomerOrderStatus(o.id, statusInfo.next!)}>
+                      {statusInfo.nextLabel}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Tables() {
   const tables = useAppStore(s=>s.tables);
   const toggle = useAppStore(s=>s.toggleTable);
@@ -761,6 +853,8 @@ function Tables() {
         <button className="mini split-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();openSplit(t.id)}}><Scissors size={11}/> Split</button>
       </div>}
     </div>)}</div>
+
+    <CustomerOrdersPanel />
 
     {splitTableId && splitSale && (
       <div className="modal-overlay" onClick={()=>setSplitTableId(null)}>
@@ -1104,6 +1198,7 @@ function Football() {
   const addMatch = useAppStore(s=>s.addMatch);
   const reserveTable = useAppStore(s=>s.reserveTableForMatch);
   const unreserveTable = useAppStore(s=>s.unreserveTableForMatch);
+  const eventBookings = useAppStore(s=>s.eventBookings);
   const [home,setHome]=useState(""); const [away,setAway]=useState(""); const [date,setDate]=useState("");
   const [promo,setPromo]=useState("");
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
@@ -1114,12 +1209,24 @@ function Football() {
     <div className="card-grid">{matches.filter(m=>m.active).map(m=>{
       const reserved = m.reservedTables ?? [];
       const reservedCount = reserved.length;
+      const matchBookings = eventBookings.filter(b => b.matchId === m.id);
       return <article className="info-card" key={m.id}>
         <Trophy/>
         <h3>{m.homeTeam} vs {m.awayTeam}</h3>
         <small>{new Date(m.startsAt).toLocaleString()}</small>
         {m.promotionText && <p className="muted-text">{m.promotionText}</p>}
         <div className="info-row"><span>Tables reserved</span><b className={reservedCount>0?"gold":""}>{reservedCount} / {tables.length}</b></div>
+        {matchBookings.length > 0 && (
+          <div className="event-bookings-list">
+            <small className="bookings-title">Customer bookings ({matchBookings.length}):</small>
+            {matchBookings.map(b => (
+              <div key={b.id} className="event-booking-row">
+                <span>{b.customerName}</span>
+                <small>{b.type === "attend" ? "Attending" : `Table ${b.tableId?.replace("t","")}`}</small>
+              </div>
+            ))}
+          </div>
+        )}
         <button className="mini" style={{marginTop:8,width:"100%"}} onClick={()=>setExpandedMatch(expandedMatch===m.id?null:m.id)}>
           {expandedMatch===m.id ? "Hide tables" : "Manage table reservations"}
         </button>

@@ -44,6 +44,7 @@ button{cursor:pointer}
 .brand span{display:block;font-size:8px;letter-spacing:1.8px;font-weight:800;color:#c8c8c8}
 .brand em{display:block;font-size:7px;letter-spacing:1.2px;font-weight:700;color:var(--muted-dim);font-style:normal;margin-top:2px}
 .nav-badge{margin-left:auto;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:var(--yellow);color:#0a0a0a;border-radius:999px;padding:2px 6px}
+.nav-badge.alert{background:#ff6556;color:#fff;animation:pulse-dot 2s infinite}
 .big-match-card{margin:12px 4px 0;padding:16px 12px;border-radius:14px;border:1px solid #6a5310;background:radial-gradient(circle at 50% 0%,rgba(249,195,23,.2),transparent 60%),linear-gradient(160deg,#181304,#0a0a0a);color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
 .big-match-card::before{content:"";position:absolute;inset:0;background:linear-gradient(45deg,transparent 40%,rgba(249,195,23,.08) 50%,transparent 60%);animation:shimmer 4s infinite}
 .big-match-card:hover{border-color:var(--yellow);transform:translateY(-2px)}
@@ -651,3 +652,35 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-wallet-tips p{font-size:11px;color:var(--muted);margin:4px 0;line-height:1.5}
 .portal-waiters-list{display:flex;flex-direction:column;gap:10px}
 .portal-waiter-hint{font-size:10px;color:var(--muted)}
+/* Customer orders panel (staff side) */
+.customer-orders-panel{margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:linear-gradient(145deg,#0e1011,#0a0b0c)}
+.customer-orders-panel .panel-title{font-size:16px;margin:0 0 14px}
+.waiter-calls-section{margin-bottom:18px}
+.waiter-calls-section h4{display:flex;align-items:center;gap:6px;font-size:13px;margin:0 0 10px;color:var(--yellow)}
+.customer-orders-section h4{display:flex;align-items:center;gap:6px;font-size:13px;margin:0 0 10px;color:var(--blue)}
+.waiter-call-card{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111315;border:1px solid rgba(249,195,23,.2);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.waiter-call-card strong{display:block;font-size:13px}
+.waiter-call-card small{display:block;font-size:11px;color:var(--muted)}
+.waiter-call-card .call-time{color:var(--yellow);font-size:10px}
+.customer-order-card{background:#111315;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;transition:var(--transition)}
+.customer-order-card:hover{border-color:#3a3d41}
+.customer-order-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.customer-order-top strong{display:block;font-size:13px}
+.customer-order-top small{display:block;font-size:10px;color:var(--muted)}
+.customer-order-status{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:99px;border:1px solid}
+.customer-order-status.pending{color:#f97316;border-color:#f97316}
+.customer-order-status.preparing{color:var(--yellow);border-color:var(--yellow)}
+.customer-order-status.served{color:var(--green);border-color:var(--green)}
+.customer-order-status.paid{color:var(--muted);border-color:var(--muted)}
+.customer-order-items{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-top:1px solid var(--line)}
+.customer-order-item{display:flex;justify-content:space-between;font-size:12px}
+.customer-order-item b{font-weight:600}
+.customer-order-note{font-size:11px;color:var(--muted);padding:6px 8px;background:#0a0b0c;border-radius:6px;margin-top:6px}
+.customer-order-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--line)}
+.customer-order-total{font-size:12px}
+.customer-order-total b{color:var(--yellow);font-size:14px}
+.event-bookings-list{margin-top:8px;padding:8px 10px;background:#0a0b0c;border-radius:8px;border:1px solid var(--line)}
+.bookings-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+.event-booking-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.event-booking-row:last-child{border-bottom:0}
+.event-booking-row small{color:var(--yellow)}
