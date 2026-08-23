@@ -638,6 +638,8 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-menu-item-info{flex:1;min-width:0}
 .portal-menu-item-info strong{display:block;font-size:13px}
 .portal-menu-item-info small{font-size:10px;color:var(--muted)}
+.portal-menu-item-info .portal-stock-low{color:#f59e0b;font-weight:600}
+.portal-menu-item-info .portal-stock-out{color:#ef4444;font-weight:600}
 .portal-menu-item-price{font-size:13px;font-weight:800;color:var(--yellow);white-space:nowrap}
 .portal-menu-add{width:32px;height:32px;border-radius:9px;background:var(--yellow);color:#0a0a0a;border:0;display:grid;place-items:center;cursor:pointer;transition:var(--transition);flex-shrink:0}
 .portal-menu-add:hover:not(:disabled){transform:scale(1.08)}

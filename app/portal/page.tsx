@@ -10,6 +10,7 @@ import {
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import type { Product, ProductCategory, CartLine } from "@/lib/types";
+import { InventoryError } from "@/lib/domain/inventory";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
@@ -279,25 +280,39 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
   const categories: Array<ProductCategory | "All"> = ["All", "Beer", "Spirits", "Wine", "Soft Drinks", "Energy Drinks", "Cigarettes", "Snacks", "Juice", "Water"];
   const filtered = products.filter(p => p.active && (category === "All" || p.category === category));
 
+  const cartQtyFor = (productId: string) => cart.find(l => l.productId === productId && l.mode === "bottle")?.quantity ?? 0;
+
   const addToCart = (p: Product) => {
+    if (cartQtyFor(p.id) >= p.stock) return;
     setCart(prev => {
       const existing = prev.find(l => l.productId === p.id && l.mode === "bottle");
-      if (existing) return prev.map(l => l.id === existing.id ? { ...l, quantity: l.quantity + 1 } : l);
+      if (existing) return prev.map(l => l.id === existing.id ? { ...l, quantity: Math.min(p.stock, l.quantity + 1) } : l);
       return [...prev, { id: `cl${Date.now()}`, productId: p.id, name: p.name, mode: "bottle" as const, unitPrice: p.bottlePrice, quantity: 1 }];
     });
   };
 
   const updateQty = (lineId: string, delta: number) => {
-    setCart(prev => prev.map(l => l.id === lineId ? { ...l, quantity: Math.max(0, l.quantity + delta) } : l).filter(l => l.quantity > 0));
+    setCart(prev => prev.map(l => {
+      if (l.id !== lineId) return l;
+      const product = products.find(p => p.id === l.productId);
+      const maxQty = product?.stock ?? l.quantity;
+      return { ...l, quantity: Math.max(0, Math.min(maxQty, l.quantity + delta)) };
+    }).filter(l => l.quantity > 0));
   };
 
   const total = cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const placeOrder = () => {
     if (!cart.length || !selectedTableId) return;
-    placeCustomerOrder(customerId, selectedTableId, cart, note);
-    setCart([]); setNote(""); setOrderPlaced(true);
-    setTimeout(() => setOrderPlaced(false), 3000);
+    try {
+      placeCustomerOrder(customerId, selectedTableId, cart, note);
+      setCart([]); setNote(""); setOrderPlaced(true);
+      setTimeout(() => setOrderPlaced(false), 3000);
+    } catch (err) {
+      setOrderError(err instanceof InventoryError ? err.message : "Could not place order. Please try again.");
+      setTimeout(() => setOrderError(null), 4000);
+    }
   };
 
   const categoryIcon = (cat: ProductCategory) => {
@@ -329,19 +344,29 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
       </div>
 
       <div className="portal-menu-grid">
-        {filtered.map(p => (
-          <div key={p.id} className="portal-menu-item">
-            <div className="portal-menu-item-icon">{categoryIcon(p.category)}</div>
-            <div className="portal-menu-item-info">
-              <strong>{p.name}</strong>
-              <small>{p.category}</small>
+        {filtered.map(p => {
+          const inCart = cartQtyFor(p.id);
+          const atStockLimit = inCart >= p.stock;
+          const lowStock = p.stock > 0 && p.stock <= 3;
+          return (
+            <div key={p.id} className="portal-menu-item">
+              <div className="portal-menu-item-icon">{categoryIcon(p.category)}</div>
+              <div className="portal-menu-item-info">
+                <strong>{p.name}</strong>
+                <small>{p.category}</small>
+                {p.stock <= 0 ? (
+                  <small className="portal-stock-out">Out of stock</small>
+                ) : lowStock ? (
+                  <small className="portal-stock-low">Only {p.stock} left{inCart > 0 ? ` (${inCart} in cart)` : ""}</small>
+                ) : null}
+              </div>
+              <div className="portal-menu-item-price">{money(p.bottlePrice)}</div>
+              <button className="portal-menu-add" onClick={() => addToCart(p)} disabled={p.stock <= 0 || !selectedTableId || atStockLimit}>
+                <Plus size={16} />
+              </button>
             </div>
-            <div className="portal-menu-item-price">{money(p.bottlePrice)}</div>
-            <button className="portal-menu-add" onClick={() => addToCart(p)} disabled={p.stock <= 0 || !selectedTableId}>
-              <Plus size={16} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {cart.length > 0 && (
@@ -350,21 +375,32 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
             <strong>Your Order</strong>
             <span>{cart.length} items • {money(total)}</span>
           </div>
-          {cart.map(l => (
-            <div key={l.id} className="portal-cart-line">
-              <div><b>{l.name}</b><small>{money(l.unitPrice)} each</small></div>
-              <div className="portal-stepper">
-                <button onClick={() => updateQty(l.id, -1)}><Minus size={14} /></button>
-                <b>{l.quantity}</b>
-                <button onClick={() => updateQty(l.id, 1)}><Plus size={14} /></button>
+          {cart.map(l => {
+            const product = products.find(p => p.id === l.productId);
+            const atStockLimit = product ? l.quantity >= product.stock : false;
+            return (
+              <div key={l.id} className="portal-cart-line">
+                <div><b>{l.name}</b><small>{money(l.unitPrice)} each</small></div>
+                <div className="portal-stepper">
+                  <button onClick={() => updateQty(l.id, -1)}><Minus size={14} /></button>
+                  <b>{l.quantity}</b>
+                  <button onClick={() => updateQty(l.id, 1)} disabled={atStockLimit}><Plus size={14} /></button>
+                </div>
+                <b className="portal-cart-line-total">{money(l.unitPrice * l.quantity)}</b>
               </div>
-              <b className="portal-cart-line-total">{money(l.unitPrice * l.quantity)}</b>
-            </div>
-          ))}
+            );
+          })}
           <input className="portal-cart-note" placeholder="Special instructions..." value={note} onChange={e => setNote(e.target.value)} />
           <button className="portal-btn-primary portal-cart-submit" onClick={placeOrder} disabled={!selectedTableId}>
             <ShoppingCart size={16} /> Place Order • {money(total)}
           </button>
+        </div>
+      )}
+
+      {orderError && (
+        <div className="portal-alert">
+          <AlertTriangle size={16} />
+          <span>{orderError}</span>
         </div>
       )}
 
@@ -440,7 +476,7 @@ function PortalOrders({ customerId }: { customerId: string }) {
         return;
       }
     }
-    updateCustomerOrderStatus(orderId, "paid");
+    updateCustomerOrderStatus(orderId, "paid", payMethod);
     setPayingId(null);
     setPaidId(orderId);
     setTimeout(() => setPaidId(null), 3000);

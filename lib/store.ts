@@ -7,6 +7,16 @@ import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
 import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
+const PERSIST_KEY = "emd-drinking-sports-v4";
+
+/**
+ * Bump this whenever the demo seed data changes shape or content (e.g. adding
+ * product categories). On load, a mismatch replaces the seeded collections once
+ * so everyone picks up the new catalogue; a match keeps the operator's real work
+ * (sales, stock levels, customers, open tables) intact across refreshes.
+ */
+const SEED_VERSION = 5;
+
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {
   ["emd-drinking-sports", "emd-drinking-sports-v1", "emd-drinking-sports-v2", "emd-drinking-sports-v3"].forEach(k => {
@@ -15,6 +25,7 @@ if (typeof window !== "undefined") {
 }
 
 interface AppState {
+  seedVersion: number;
   products: Product[];
   customers: Customer[];
   tables: BarTable[];
@@ -73,7 +84,8 @@ interface AppState {
   toggleBarOpen: () => void;
   customerOrders: CustomerOrder[];
   placeCustomerOrder: (customerId: string, tableId: string, lines: CartLine[], note?: string) => string;
-  updateCustomerOrderStatus: (orderId: string, status: CustomerOrder["status"]) => void;
+  /** Passing "paid" records a real sale; `method` is how the customer paid. */
+  updateCustomerOrderStatus: (orderId: string, status: CustomerOrder["status"], method?: PaymentMethod) => void;
   waiterCalls: WaiterCall[];
   callWaiter: (tableId: string, customerId?: string, message?: string) => void;
   updateWaiterCall: (callId: string, updates: Partial<WaiterCall>) => void;
@@ -85,9 +97,43 @@ interface AppState {
 
 const totalOf = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
+/**
+ * Decide what state to restore on load.
+ *
+ * Exported so the persistence contract can be unit tested: operator work must
+ * survive a refresh, while a bumped SEED_VERSION still rolls a new demo
+ * catalogue out to browsers holding an older cache.
+ */
+export function mergePersistedState(
+  persistedState: unknown,
+  currentState: AppState
+): AppState {
+  const persisted = persistedState as Partial<AppState> | undefined;
+
+  // First run, or the demo catalogue changed since this browser last loaded:
+  // start from the fresh seed so new products/tables show up.
+  if (!persisted || persisted.seedVersion !== SEED_VERSION) {
+    return {
+      ...currentState,
+      seedVersion: SEED_VERSION,
+      // Customer-portal activity is the operator's own data, so keep it even
+      // through a seed refresh.
+      customerOrders: persisted?.customerOrders ?? [],
+      waiterCalls: persisted?.waiterCalls ?? [],
+      chatMessages: persisted?.chatMessages ?? [],
+      eventBookings: persisted?.eventBookings ?? [],
+      barOpen: persisted?.barOpen ?? true,
+    };
+  }
+
+  // Same seed version: restore everything the operator did last session.
+  return { ...currentState, ...persisted, seedVersion: SEED_VERSION };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
+      seedVersion: SEED_VERSION,
       products: productsSeed,
       customers: customersSeed,
       tables: tablesSeed,
@@ -560,16 +606,129 @@ export const useAppStore = create<AppState>()(
 
       toggleBarOpen: () => set((s) => ({ barOpen: !s.barOpen })),
 
+      /**
+       * A portal order is real trade, so it draws stock and opens a tab on the
+       * table straight away — the same as a waiter keying it into the POS.
+       * Revenue is only recognised later, when the order is paid.
+       */
       placeCustomerOrder: (customerId, tableId, lines, note) => {
+        const state = get();
         const id = `co${Date.now()}`;
         const order: CustomerOrder = { id, customerId, tableId, lines, status: "pending", createdAt: new Date().toISOString(), note };
-        set((s) => ({ customerOrders: [order, ...s.customerOrders] }));
+
+        let nextProducts = [...state.products];
+        const newMovements: StockMovement[] = [];
+
+        for (const line of lines) {
+          const product = nextProducts.find((p) => p.id === line.productId);
+          if (!product) continue;
+          const updated = applySaleToProduct(product, line.mode, line.quantity);
+          nextProducts = nextProducts.map((p) => p.id === product.id ? updated : p);
+
+          if (line.mode === "bottle") {
+            newMovements.push({
+              id: crypto.randomUUID(),
+              productId: product.id,
+              productName: product.name,
+              movementType: "sale_bottle",
+              bottleDelta: -line.quantity,
+              shotDelta: 0,
+              reason: `Customer portal order - ${line.quantity} bottle(s)`,
+              createdAt: new Date().toISOString()
+            });
+          } else {
+            const bottlesOpened = product.stock - updated.stock;
+            if (bottlesOpened > 0) {
+              newMovements.push({
+                id: crypto.randomUUID(),
+                productId: product.id,
+                productName: product.name,
+                movementType: "open_for_shots",
+                bottleDelta: -bottlesOpened,
+                shotDelta: product.shotsPerBottle ?? 0,
+                reason: `Opened ${bottlesOpened} bottle(s) for shot/tot sales`,
+                createdAt: new Date().toISOString()
+              });
+            }
+            newMovements.push({
+              id: crypto.randomUUID(),
+              productId: product.id,
+              productName: product.name,
+              movementType: "adjustment_out",
+              bottleDelta: 0,
+              shotDelta: -line.quantity,
+              reason: `Shot/tot consumption - ${line.quantity} shot(s)`,
+              createdAt: new Date().toISOString()
+            });
+          }
+        }
+
+        const orderTotal = totalOf(lines);
+        set({
+          customerOrders: [order, ...state.customerOrders],
+          products: nextProducts,
+          stockMovements: [...newMovements, ...state.stockMovements],
+          tables: state.tables.map((t) => t.id === tableId
+            ? { ...t, occupied: true, bill: t.bill + orderTotal }
+            : t)
+        });
         return id;
       },
 
-      updateCustomerOrderStatus: (orderId, status) => set((s) => ({
-        customerOrders: s.customerOrders.map((o) => o.id === orderId ? { ...o, status } : o)
-      })),
+      /**
+       * Moving an order to "paid" recognises the revenue: it writes a real
+       * SaleRecord so the money shows up in Today's Sales, reports and payment
+       * reconciliation, credits loyalty, and clears the amount off the tab.
+       * Stock was already taken when the order was placed.
+       */
+      updateCustomerOrderStatus: (orderId, status, method: PaymentMethod = "cash") => {
+        const state = get();
+        const order = state.customerOrders.find((o) => o.id === orderId);
+        if (!order) return;
+
+        const alreadyPaid = order.status === "paid";
+        const nextOrders = state.customerOrders.map((o) => o.id === orderId ? { ...o, status } : o);
+
+        if (status !== "paid" || alreadyPaid) {
+          set({ customerOrders: nextOrders });
+          return;
+        }
+
+        const total = totalOf(order.lines);
+        const sale: SaleRecord = {
+          id: crypto.randomUUID(),
+          total,
+          paymentMethod: method,
+          paymentStatus: method === "cash" || method === "gift" || method === "wallet" ? "successful" : "pending",
+          createdAt: new Date().toISOString(),
+          lines: order.lines,
+          tableId: order.tableId,
+          customerId: order.customerId,
+          cashierId: state.currentCashierId,
+          discount: 0,
+          note: order.note ? `Portal order: ${order.note}` : "Customer portal order",
+          voided: false
+        };
+
+        set({
+          customerOrders: nextOrders,
+          sales: [sale, ...state.sales],
+          customers: state.customers.map((c) => c.id === order.customerId
+            ? {
+                ...c,
+                totalSpent: c.totalSpent + total,
+                loyaltyPoints: c.loyaltyPoints + Math.floor(total / 10),
+                lastPurchaseDate: new Date().toISOString(),
+                visitCount: c.visitCount + 1
+              }
+            : c),
+          tables: state.tables.map((t) => {
+            if (t.id !== order.tableId) return t;
+            const remaining = Math.max(0, t.bill - total);
+            return { ...t, bill: remaining, occupied: remaining > 0 };
+          })
+        });
+      },
 
       callWaiter: (tableId, customerId, message) => {
         const id = `wc${Date.now()}`;
@@ -597,59 +756,37 @@ export const useAppStore = create<AppState>()(
       }
     }),
     {
-      name: "emd-drinking-sports-v4",
+      name: PERSIST_KEY,
       version: 4,
       migrate: () => undefined,
-      merge: (persistedState, currentState) => {
-        // Always force fresh seed data for products/tables/etc
-        const persisted = persistedState as Partial<AppState> | undefined;
-        return {
-          ...currentState,
-          ...persisted,
-          // Always override with latest seed data
-          products: productsSeed,
-          tables: tablesSeed,
-          staff: staffSeed,
-          customers: customersSeed,
-          giftCards: giftCardsSeed,
-          debts: debtsSeed,
-          sales: salesSeed,
-          expenses: expensesSeed,
-          matches: matchesSeed,
-          // Preserve user-created data if it exists
-          customerOrders: persisted?.customerOrders ?? [],
-          waiterCalls: persisted?.waiterCalls ?? [],
-          chatMessages: persisted?.chatMessages ?? [],
-          eventBookings: persisted?.eventBookings ?? [],
-          barOpen: persisted?.barOpen ?? true,
-        };
-      }
+      merge: (persistedState, currentState) => mergePersistedState(persistedState, currentState as AppState)
     }
   )
 );
 
-// Cross-tab sync: when another tab changes localStorage, reload the store
+/**
+ * Cross-tab sync. The staff app and the customer portal are separate tabs
+ * sharing one localStorage key, so adopt whatever the other tab wrote. Seeds
+ * are deliberately NOT re-applied here — that would discard live sales, stock
+ * movements and table state from the writing tab.
+ */
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
-    if (e.key === "emd-drinking-sports-v4" && e.newValue) {
-      try {
-        const parsed = JSON.parse(e.newValue);
-        if (parsed?.state) {
-          useAppStore.setState({
-            ...parsed.state,
-            // Always keep latest seed data
-            products: productsSeed,
-            tables: tablesSeed,
-            staff: staffSeed,
-            customers: customersSeed,
-            giftCards: giftCardsSeed,
-            debts: debtsSeed,
-            sales: salesSeed,
-            expenses: expensesSeed,
-            matches: matchesSeed,
-          });
-        }
-      } catch { /* ignore parse errors */ }
-    }
+    if (e.key !== PERSIST_KEY || !e.newValue) return;
+    try {
+      const parsed = JSON.parse(e.newValue);
+      if (!parsed?.state || parsed.state.seedVersion !== SEED_VERSION) return;
+      const incoming = parsed.state as Partial<AppState>;
+      // Keep this tab's own in-progress cart/selection so a cashier mid-sale
+      // isn't disturbed by activity in another tab.
+      const localOnly = {
+        cart: useAppStore.getState().cart,
+        cartNote: useAppStore.getState().cartNote,
+        discount: useAppStore.getState().discount,
+        selectedTableId: useAppStore.getState().selectedTableId,
+        selectedCustomerId: useAppStore.getState().selectedCustomerId,
+      };
+      useAppStore.setState({ ...incoming, ...localOnly });
+    } catch { /* ignore parse errors */ }
   });
 }
