@@ -23,6 +23,13 @@ async function navigateTo(page: Page, name: string) {
   await page.getByRole("button", { name: name }).first().click();
 }
 
+/** Click PAY NOW and confirm in the payment modal. */
+async function payNow(page: Page) {
+  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await page.locator(".pay-modal").waitFor({ state: "visible" });
+  await page.locator(".pay-confirm").click();
+}
+
 test.beforeEach(async ({ page }) => {
   await signInAs(page, "owner");
 });
@@ -50,7 +57,7 @@ test("POS checkout completes with cash", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
   const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
   await clubCard.getByRole("button", { name: /Bottle/ }).click();
-  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await payNow(page);
   await expect(page.getByText(/completed/)).toBeVisible();
 });
 
@@ -58,7 +65,7 @@ test("POS shot/tot cash sale completes", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
   const spiritCard = page.locator("article").filter({ hasText: "Black & White" }).first();
   await spiritCard.getByRole("button", { name: /Shot/ }).click();
-  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await payNow(page);
   await expect(page.getByText(/completed/)).toBeVisible();
 });
 
@@ -220,7 +227,8 @@ test("cashier cannot see settings nav", async ({ page }) => {
 
 test("mobile AI navigation is usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator(".bottom-nav").getByRole("button", { name: /AI/ }).click();
+  await page.locator(".bottom-nav").getByRole("button", { name: /More/ }).click();
+  await page.getByRole("button", { name: "AI Assistant" }).first().click();
   await expect(page.getByRole("heading", { name: "EMD AI Assistant" })).toBeVisible();
 });
 
@@ -232,7 +240,7 @@ test("mobile dashboard is responsive", async ({ page }) => {
 
 test("mobile POS is usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator(".bottom-nav").getByRole("button", { name: /POS/ }).click();
+  await page.locator(".bottom-nav").getByRole("button", { name: /^Sales$/ }).click();
   await expect(page.getByRole("heading", { name: "POS / Sales" })).toBeVisible();
 });
 
@@ -298,6 +306,8 @@ test("keyboard shortcut F9 triggers checkout", async ({ page }) => {
   const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
   await clubCard.getByRole("button", { name: /Bottle/ }).click();
   await page.keyboard.press("F9");
+  await page.locator(".pay-modal").waitFor({ state: "visible" });
+  await page.locator(".pay-confirm").click();
   await expect(page.getByText(/completed/)).toBeVisible();
 });
 
@@ -319,7 +329,7 @@ test("receipt print button appears after checkout", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
   const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
   await clubCard.getByRole("button", { name: /Bottle/ }).click();
-  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await payNow(page);
   await expect(page.getByRole("button", { name: /Print receipt/ })).toBeVisible();
 });
 
@@ -545,7 +555,7 @@ test("POS sales stats update after checkout", async ({ page }) => {
   const initialSalesText = await page.locator(".cashier-stat").filter({ hasText: "Today's Sales" }).locator("strong").textContent();
   const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
   await clubCard.getByRole("button", { name: /Bottle/ }).click();
-  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await payNow(page);
   await expect(page.getByText(/completed/)).toBeVisible();
   // The Today's Sales stat should have changed
   const newSalesText = await page.locator(".cashier-stat").filter({ hasText: "Today's Sales" }).locator("strong").textContent();
@@ -620,10 +630,31 @@ test("dashboard shows metric trend indicators", async ({ page }) => {
   await expect(page.getByText(/from yesterday/).first()).toBeVisible();
 });
 
-test("dashboard shows top selling products ranked list", async ({ page }) => {
-  await expect(page.getByText("Top selling products")).toBeVisible();
-  await expect(page.locator(".rank-list li").first()).toBeVisible();
-  await expect(page.locator(".rank-num").first()).toHaveText("1");
+test("dashboard shows top selling drinks chart", async ({ page }) => {
+  await expect(page.getByText("Top selling drinks")).toBeVisible();
+  await expect(page.locator(".legend").first()).toBeVisible();
+});
+
+test("dashboard shows top debtors list", async ({ page }) => {
+  await expect(page.getByText("Top debtors")).toBeVisible();
+  await expect(page.locator(".debtor-list li").first()).toBeVisible();
+});
+
+test("dashboard AI assistant answers a suggested question", async ({ page }) => {
+  await expect(page.locator(".dash-assistant")).toBeVisible();
+  await page.locator(".dash-chips button").first().click();
+  await expect(page.locator(".dash-answer-body li").first()).toBeVisible();
+});
+
+test("POS payment modal shows momo provider and phone fields", async ({ page }) => {
+  await navigateTo(page, "POS / Sales");
+  const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
+  await clubCard.getByRole("button", { name: /Bottle/ }).click();
+  await page.getByRole("button", { name: /PAY NOW/i }).click();
+  await expect(page.locator(".pay-modal")).toBeVisible();
+  await page.locator(".pay-methods button").filter({ hasText: "Mobile Money" }).click();
+  await expect(page.getByText("Mobile Money Provider")).toBeVisible();
+  await expect(page.getByPlaceholder("055 123 4567")).toBeVisible();
 });
 
 test("dashboard shows low stock items table with status badges", async ({ page }) => {

@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  BarChart3, Beer, Bot, Boxes, CircleDollarSign, CreditCard, Crown, Gift, GlassWater,
+  BarChart3, Beer, Bot, Boxes, CircleDollarSign, CreditCard, Crown, Gift,
   Home, LayoutGrid, Menu, Plus, ReceiptText, Search, Settings, ShieldCheck, ShoppingCart,
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
   Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
-  Zap, Cigarette, Cookie, CupSoda, Wine
+  Banknote, Send
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -17,7 +17,7 @@ import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import { buildReceipt, browserPrinter } from "@/lib/receipt";
 import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
-import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product } from "@/lib/types";
+import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus } from "@/lib/types";
 
 type Page =
   | "Dashboard" | "POS / Sales" | "Tables" | "Inventory" | "Customers" | "Debts"
@@ -223,14 +223,26 @@ function AppInner() {
         </section>
 
         <nav className="bottom-nav">
-          {([
-            ["Dashboard", Home], ["POS / Sales", ShoppingCart], ["Tables", LayoutGrid],
-            ["Reports", BarChart3], ["AI Assistant", Bot]
-          ] as Array<[Page, IconType]>).map(([label, Icon]) => (
+          {([["Dashboard", Home, "Home"], ["POS / Sales", ShoppingCart, "Sales"]] as Array<[Page, IconType, string]>).map(([label, Icon, short]) => (
             <button key={label} className={page === label ? "active" : ""} onClick={() => setPage(label)}>
-              <Icon size={20}/><span>{label === "POS / Sales" ? "POS" : label.split(" ")[0]}</span>
+              <Icon size={20}/><span>{short}</span>
             </button>
           ))}
+
+          <button className="bottom-fab" onClick={() => setPage("POS / Sales")} aria-label="New sale">
+            <span className="bottom-fab-btn"><Plus size={26}/></span>
+            <span>New Sale</span>
+          </button>
+
+          {([["Tables", LayoutGrid, "Tables"], ["Reports", BarChart3, "Reports"]] as Array<[Page, IconType, string]>).map(([label, Icon, short]) => (
+            <button key={label} className={page === label ? "active" : ""} onClick={() => setPage(label)}>
+              <Icon size={20}/><span>{short}</span>
+            </button>
+          ))}
+
+          <button onClick={() => setMobileNav(true)} aria-label="More">
+            <Menu size={20}/><span>More</span>
+          </button>
         </nav>
       </main>
     </div>
@@ -256,6 +268,8 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const customersOwing = customers.filter((c) => c.debt > 200);
 
   const topSelling = insights.ranked.filter((p) => p.units > 0).slice(0, 5);
+  const topUnits = topSelling.reduce((a, p) => a + p.units, 0);
+  const topDebtors = useMemo(() => customers.filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5), [customers]);
   const recentSaleLines = useMemo(() => sales
     .filter((s) => !s.voided)
     .flatMap((s) => s.lines.map((l) => ({ line: l, sale: s })))
@@ -301,11 +315,29 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
           <Line type="monotone" dataKey="value" stroke="#f9c317" strokeWidth={3} dot={{fill:"#f9c317",r:4}} activeDot={{r:6}}/>
         </LineChart></ResponsiveContainer></div>
       </Panel>
-      <Panel title="Top selling products" action={<span className="panel-tag">This Week</span>}>
-        <ol className="rank-list">
-          {topSelling.length === 0 && <li className="muted-text">No sales recorded yet.</li>}
-          {topSelling.map((p, i) => (
-            <li key={p.id}><span className="rank-num">{i+1}</span><span className="rank-name">{p.name}</span><b>{p.units} units</b></li>
+      <Panel title="Top selling drinks" action={<span className="panel-tag">This Week</span>}>
+        {topSelling.length === 0 ? <p className="muted-text">No sales recorded yet.</p> : <>
+          <div className="chart small"><ResponsiveContainer width="100%" height="100%"><PieChart>
+            <Pie data={topSelling} dataKey="units" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={3}>
+              {topSelling.map((_, i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
+            </Pie>
+            <Tooltip contentStyle={{background:"#111315",border:"1px solid #333",borderRadius:"10px",fontSize:"12px"}}/>
+          </PieChart></ResponsiveContainer></div>
+          <div className="legend">{topSelling.map((d,i)=>(
+            <span key={d.id}><i style={{background:COLORS[i%COLORS.length]}}/>{d.name} <b>{topUnits>0?Math.round((d.units/topUnits)*100):0}%</b></span>
+          ))}</div>
+        </>}
+      </Panel>
+
+      <Panel title="Top debtors" action={<button className="panel-link" onClick={()=>onNavigate("Debts")}>View all</button>}>
+        <ol className="debtor-list">
+          {topDebtors.length === 0 && <li className="muted-text">No outstanding debts.</li>}
+          {topDebtors.map((c) => (
+            <li key={c.id}>
+              <span className="debtor-avatar">{c.name[0]}</span>
+              <span className="debtor-name">{c.name}</span>
+              <b className="debtor-amount">{money(c.debt)}</b>
+            </li>
           ))}
         </ol>
       </Panel>
@@ -381,6 +413,8 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
       </Panel>
     </div>
 
+    <DashboardAssistant onNavigate={onNavigate}/>
+
     <div className="feature-strip">
       {[
         { icon: <Beer/>, title: "Bottle & Shot Sales", sub: "Sell full bottles or tots" },
@@ -398,6 +432,212 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
       ))}
     </div>
   </>;
+}
+
+function DashboardAssistant({ onNavigate }: { onNavigate: (p: Page) => void }) {
+  const products = useAppStore(s => s.products);
+  const customers = useAppStore(s => s.customers);
+  const sales = useAppStore(s => s.sales);
+  const { user } = useAuth();
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<string[] | null>(null);
+
+  const insights = useMemo(() => businessInsights(products, customers, sales), [products, customers, sales]);
+  const firstName = (user?.name ?? "there").split(" ")[0];
+
+  const todaySummary = useMemo(() => {
+    const today = new Date().toDateString();
+    const todaySales = sales.filter(s => !s.voided && new Date(s.createdAt).toDateString() === today);
+    const total = todaySales.reduce((a, s) => a + s.total, 0);
+    const units = todaySales.reduce((a, s) => a + s.lines.reduce((x, l) => x + l.quantity, 0), 0);
+    const owing = customers.filter(c => c.debt > 200);
+    return [
+      `Total Sales: ${money(total)}`,
+      `Items Sold: ${units}`,
+      `Highest Selling: ${insights.bestSeller?.name ?? "—"} (${insights.bestSeller?.units ?? 0} units)`,
+      `Lowest Selling: ${insights.leastSeller?.name ?? "—"} (${insights.leastSeller?.units ?? 0} units)`,
+      `Low Stock Items: ${insights.lowStock.length}`,
+      `Customers Owing More Than GHS 200: ${owing.length}`
+    ];
+  }, [sales, customers, insights]);
+
+  const answerFor = (q: string): string[] => {
+    const t = q.toLowerCase();
+    if (t.includes("summary") || t.includes("today")) return todaySummary;
+    if (t.includes("owe") || t.includes("debt") || t.includes("debtor")) {
+      const top = customers.filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5);
+      return top.length ? top.map(c => `${c.name} owes ${money(c.debt)}`) : ["No customers currently owe you money."];
+    }
+    if (t.includes("stock") || t.includes("restock") || t.includes("low")) {
+      return insights.lowStock.length
+        ? insights.lowStock.map(p => `${p.name}: ${p.stock} left (reorder at ${p.reorderLevel})`)
+        : ["All products are healthy — nothing needs restocking."];
+    }
+    if (t.includes("selling") || t.includes("best") || t.includes("top")) {
+      const top = insights.ranked.filter(p => p.units > 0).slice(0, 5);
+      return top.length ? top.map((p, i) => `${i + 1}. ${p.name} — ${p.units} units`) : ["No sales recorded yet."];
+    }
+    return todaySummary;
+  };
+
+  const ask = (q: string) => {
+    if (!q.trim()) return;
+    setQuestion(q);
+    setAnswer(answerFor(q));
+  };
+
+  const chips = ["Give me a summary of today's business", "Who owes the most?", "What is selling most?", "Which products are low?"];
+
+  return (
+    <div className="dash-assistant">
+      <div className="dash-assistant-intro">
+        <div className="dash-bot"><Bot size={30}/></div>
+        <strong>EMD AI ASSISTANT</strong>
+        <p>Hello {firstName}! I&apos;m your AI bar assistant. I analyze your business and give you smart insights.</p>
+        <button className="dash-assistant-new" onClick={() => { setAnswer(null); setQuestion(""); }}>
+          <Plus size={14}/> New Chat
+        </button>
+        <button className="dash-assistant-full" onClick={() => onNavigate("AI Assistant")}>
+          Open full assistant <ArrowUpRight size={14}/>
+        </button>
+      </div>
+
+      <div className="dash-assistant-chat">
+        <div className="dash-chips">
+          {chips.map(c => <button key={c} onClick={() => ask(c)}>{c}</button>)}
+        </div>
+
+        <div className="dash-answer">
+          {answer === null ? (
+            <div className="dash-answer-empty">
+              <Bot size={20}/>
+              <p>Ask me about sales, stock, debtors or top drinks — or tap a suggestion above.</p>
+            </div>
+          ) : (
+            <>
+              <div className="dash-answer-q">{question}</div>
+              <div className="dash-answer-body">
+                <strong>Here&apos;s what I found:</strong>
+                <ul>{answer.map((line, i) => <li key={i}><CheckCircle2 size={13}/> {line}</li>)}</ul>
+                <small className="dash-answer-time">Just now</small>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="dash-ask">
+          <input
+            placeholder="Ask about sales, stock, debtors, top drinks…"
+            value={question}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuestion(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") ask(question); }}
+          />
+          <button onClick={() => ask(question)} aria-label="Send"><Send size={16}/></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Brand-accurate colours so each product reads instantly on the POS grid
+const BRAND: Record<string, { body: string; body2: string; label: string; text: string; cap: string }> = {
+  "Guinness":      { body:"#1a1005", body2:"#0b0703", label:"#12100c", text:"#e3b23c", cap:"#c8992b" },
+  "Club Beer":     { body:"#1b4f8f", body2:"#0d2a4f", label:"#1256a0", text:"#ffffff", cap:"#c9ced4" },
+  "Star Beer":     { body:"#2f6fbf", body2:"#17406f", label:"#ffffff", text:"#1b4f8f", cap:"#c9ced4" },
+  "Heineken":      { body:"#1c6b2f", body2:"#0c3517", label:"#127a33", text:"#ffffff", cap:"#e2231a" },
+  "Black & White": { body:"#2a2317", body2:"#12100b", label:"#f2efe6", text:"#1a1a1a", cap:"#1a1a1a" },
+  "Johnnie Walker":{ body:"#7a4a12", body2:"#40260a", label:"#111111", text:"#d4af37", cap:"#d4af37" },
+  "Hennessy VS":   { body:"#8a5210", body2:"#4a2a06", label:"#e9d9a8", text:"#5a3606", cap:"#1a1a1a" },
+  "Red Wine":      { body:"#3e0d18", body2:"#1c060b", label:"#e8dcc4", text:"#6a1220", cap:"#6a1220" },
+  "White Wine":    { body:"#6d6a2c", body2:"#333213", label:"#f4eecd", text:"#6a6420", cap:"#c9b458" },
+  "Malt":          { body:"#43230c", body2:"#1e0f05", label:"#8a4a16", text:"#f0d9a8", cap:"#c8992b" },
+  "Coke":          { body:"#5c0a0a", body2:"#2a0404", label:"#e2231a", text:"#ffffff", cap:"#e2231a" },
+  "Water":         { body:"#8fd3ef", body2:"#3f9dc4", label:"#ffffff", text:"#1b7fa8", cap:"#1b7fa8" },
+};
+const CATEGORY_FALLBACK: Record<ProductCategory, { body: string; body2: string; label: string; text: string; cap: string }> = {
+  "Beer":         { body:"#6b4413", body2:"#2f1d07", label:"#8a5a18", text:"#f0d9a8", cap:"#c8992b" },
+  "Spirits":      { body:"#7a4a12", body2:"#3a230a", label:"#efe3c4", text:"#4a2c06", cap:"#d4af37" },
+  "Wine":         { body:"#2c3d1c", body2:"#131c0b", label:"#e8dcc4", text:"#3f5527", cap:"#8a7333" },
+  "Soft Drinks":  { body:"#7a1414", body2:"#380808", label:"#e2231a", text:"#ffffff", cap:"#e2231a" },
+  "Water":        { body:"#8fd3ef", body2:"#3f9dc4", label:"#ffffff", text:"#1b7fa8", cap:"#1b7fa8" },
+  "Energy Drinks":{ body:"#20304a", body2:"#0d1622", label:"#f9c317", text:"#101010", cap:"#c9ced4" },
+  "Cigarettes":   { body:"#e8e6e0", body2:"#bdb9b0", label:"#c8102e", text:"#ffffff", cap:"#8c8781" },
+  "Snacks":       { body:"#b8791b", body2:"#75470b", label:"#f3c969", text:"#5a3606", cap:"#8a5a18" },
+  "Juice":        { body:"#d98613", body2:"#8a5205", label:"#ffb733", text:"#5a3606", cap:"#c8992b" },
+};
+
+function ProductVisual({ product }: { product: Product }) {
+  const c = BRAND[product.name] ?? CATEGORY_FALLBACK[product.category];
+  const id = product.id;
+  const cat = product.category;
+  const glass = (
+    <>
+      <linearGradient id={`g-${id}`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor={c.body2}/><stop offset="38%" stopColor={c.body}/>
+        <stop offset="62%" stopColor={c.body}/><stop offset="100%" stopColor={c.body2}/>
+      </linearGradient>
+      <linearGradient id={`s-${id}`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#fff" stopOpacity=".34"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/>
+      </linearGradient>
+    </>
+  );
+
+  // Can — energy drinks
+  if (cat === "Energy Drinks") return (
+    <svg viewBox="0 0 40 64" role="img" aria-label={product.name}>
+      <defs>{glass}</defs>
+      <rect x="11" y="4" width="18" height="3" rx="1.4" fill={c.cap}/>
+      <rect x="10" y="6" width="20" height="54" rx="4" fill={`url(#g-${id})`}/>
+      <rect x="10" y="22" width="20" height="22" fill={c.label}/>
+      <rect x="12.5" y="8" width="3.5" height="50" rx="1.8" fill={`url(#s-${id})`}/>
+      <text x="20" y="36" textAnchor="middle" fontSize="7" fontWeight="700" fill={c.text}>{product.name.slice(0,3).toUpperCase()}</text>
+    </svg>
+  );
+
+  // Pack — cigarettes
+  if (cat === "Cigarettes") return (
+    <svg viewBox="0 0 40 64" role="img" aria-label={product.name}>
+      <defs>{glass}</defs>
+      <rect x="9" y="10" width="22" height="46" rx="2.5" fill={`url(#g-${id})`}/>
+      <rect x="9" y="10" width="22" height="13" rx="2.5" fill={c.cap}/>
+      <rect x="9" y="28" width="22" height="16" fill={c.label}/>
+      <rect x="11.5" y="12" width="3" height="42" rx="1.5" fill={`url(#s-${id})`}/>
+      <text x="20" y="39" textAnchor="middle" fontSize="6.5" fontWeight="700" fill={c.text}>{product.name.slice(0,3).toUpperCase()}</text>
+    </svg>
+  );
+
+  // Bag — snacks
+  if (cat === "Snacks") return (
+    <svg viewBox="0 0 40 64" role="img" aria-label={product.name}>
+      <defs>{glass}</defs>
+      <path d="M8 14 h24 v40 a3 3 0 0 1-3 3 h-18 a3 3 0 0 1-3-3 z" fill={`url(#g-${id})`}/>
+      <path d="M8 14 l4-4 h16 l4 4 z" fill={c.cap}/>
+      <rect x="8" y="28" width="24" height="16" fill={c.label}/>
+      <rect x="11" y="17" width="3" height="38" rx="1.5" fill={`url(#s-${id})`}/>
+      <text x="20" y="39" textAnchor="middle" fontSize="6.5" fontWeight="700" fill={c.text}>{product.name.slice(0,3).toUpperCase()}</text>
+    </svg>
+  );
+
+  // Bottle — beer / spirits / wine / soft drinks / water / juice
+  const wide = cat === "Spirits" || cat === "Juice";
+  const bodyTop = cat === "Wine" ? 24 : 26;
+  const w = wide ? 26 : 22;
+  const x = (40 - w) / 2;
+  return (
+    <svg viewBox="0 0 40 64" role="img" aria-label={product.name}>
+      <defs>{glass}</defs>
+      <rect x="16" y="3" width="8" height="5" rx="1.2" fill={c.cap}/>
+      <path
+        d={`M16.5 8 h7 v${bodyTop - 16} c0 3 ${(w/2-3.5).toFixed(1)} 4 ${(w/2-3.5).toFixed(1)} 8 v${58-bodyTop} a3 3 0 0 1-3 3 h-${w-6} a3 3 0 0 1-3-3 v${-(58-bodyTop)} c0-4 ${(w/2-3.5).toFixed(1)}-5 ${(w/2-3.5).toFixed(1)}-8 z`}
+        fill={`url(#g-${id})`}
+      />
+      <rect x={x} y={bodyTop + 10} width={w} height="17" fill={c.label}/>
+      <rect x={x + 2.5} y={bodyTop + 3} width="3" height={52 - bodyTop} rx="1.5" fill={`url(#s-${id})`}/>
+      <text x="20" y={bodyTop + 21.5} textAnchor="middle" fontSize="6.5" fontWeight="700" fill={c.text}>
+        {product.name.slice(0, 3).toUpperCase()}
+      </text>
+    </svg>
+  );
 }
 
 function POS() {
@@ -442,6 +682,10 @@ function POS() {
 
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [payment, setPayment] = useState<PaymentMethod>("cash");
+  const [showPay, setShowPay] = useState(false);
+  const [momoProvider, setMomoProvider] = useState("MTN Mobile Money");
+  const [momoPhone, setMomoPhone] = useState("");
+  const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [showHeld, setShowHeld] = useState(false);
@@ -461,7 +705,7 @@ function POS() {
         searchRef.current?.focus();
       } else if (e.key === "F9") {
         e.preventDefault();
-        if (cart.length) complete();
+        if (cart.length) setShowPay(true);
       } else if (e.key === "F8") {
         e.preventDefault();
         if (cart.length) holdOrder();
@@ -486,26 +730,35 @@ function POS() {
       return;
     }
     if (payment === "momo" || payment === "card") {
-      const configured = confirm("Use Eganow electronic payment? Cancel records the sale locally without calling the gateway.");
-      if (configured) {
-        try {
-          const res = await fetch("/api/payments/eganow/initiate", {
-            method:"POST", headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({ amount: total, currency:"GHS", method:payment })
-          });
-          if (!res.ok) {
-            const e = await res.json();
-            setMessage(e.error ?? "Eganow payment could not start.");
+      setPaying(true);
+      try {
+        const res = await fetch("/api/payments/eganow/initiate", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            amount: total, currency:"GHS", method:payment,
+            ...(payment === "momo" ? { provider: momoProvider, phone: momoPhone } : {})
+          })
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          // Gateway not configured in demo — still record the sale locally.
+          if (res.status !== 501 && res.status !== 500) {
+            setMessage(e.error ?? "Payment could not start.");
+            setPaying(false);
             return;
           }
-        } catch {
-          setMessage("Network error while contacting payment service.");
-          return;
         }
+      } catch {
+        setMessage("Network error while contacting payment service.");
+        setPaying(false);
+        return;
       }
+      setPaying(false);
     }
     const result = checkout(payment);
     setLastSale(result.sale);
+    setShowPay(false);
+    setMomoPhone("");
     setMessage(`Sale ${result.sale.id.slice(0,8)} completed • ${money(result.total)}`);
   };
 
@@ -602,17 +855,12 @@ function POS() {
         <div className="product-grid">
           {filteredProducts.map(p=>{
             const unitLabel = p.category==="Cigarettes" ? "Pack" : p.category==="Snacks" ? "Item" : "Bottle";
-            const visual = p.category==="Beer" ? <Beer/>
-              : p.category==="Water" ? <GlassWater/>
-              : p.category==="Wine" ? <Wine/>
-              : p.category==="Spirits" ? <Crown/>
-              : p.category==="Energy Drinks" ? <Zap/>
-              : p.category==="Cigarettes" ? <Cigarette/>
-              : p.category==="Snacks" ? <Cookie/>
-              : p.category==="Juice" ? <CupSoda/>
-              : <CupSoda/>;
-            return <article className="product-card" key={p.id}>
-            <div className="product-visual">{visual}</div>
+            const low = p.stock <= p.reorderLevel;
+            return <article className={`product-card ${p.stock<=0?"out-of-stock":""}`} key={p.id}>
+            <div className="product-visual">
+              <ProductVisual product={p}/>
+              {p.stock<=0 ? <span className="stock-chip out">Out</span> : low ? <span className="stock-chip low">Low</span> : null}
+            </div>
             <div><h3>{p.name}</h3><small>{p.category} • Stock {p.stock}</small></div>
             <div className="price-buttons">
               <button onClick={()=>add(p.id,"bottle")} disabled={p.stock<=0}><span>{unitLabel}</span>{money(p.bottlePrice)}</button>
@@ -658,7 +906,7 @@ function POS() {
           </div>)}
         </div>
 
-        <input className="cart-note-input" placeholder="Order note…" value={cartNote} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setCartNote(e.target.value)} />
+        <input className="cart-note-input" placeholder="Add a note…" value={cartNote} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setCartNote(e.target.value)} />
 
         {can("void_sale") && (
           <div className="discount-row">
@@ -677,7 +925,7 @@ function POS() {
           <div className="summary-row"><span>Discount</span><b className="discount-value">- {money(discount)}</b></div>
         </div>
         <div className="cart-total"><span>TOTAL</span><strong>{money(total)}</strong></div>
-        <button className="checkout" disabled={!cart.length} onClick={complete} title="Checkout (F9)"><CreditCard/> PAY NOW <span className="kbd-hint">F9</span></button>
+        <button className="checkout" disabled={!cart.length} onClick={()=>setShowPay(true)} title="Checkout (F9)"><CreditCard/> PAY NOW <span className="kbd-hint">F9</span></button>
         <div className="cart-secondary-actions">
           <button className="secondary" disabled={!cart.length || !selectedTableId} onClick={openTab} title="Keep this order open on the selected table"><LayoutGrid size={15}/> OPEN TAB</button>
           <button className="secondary" disabled={!cart.length} onClick={()=>{holdOrder();setMessage("Order saved to held orders.")}} title="Save order for later (F8)"><Pause size={15}/> SAVE ORDER</button>
@@ -702,6 +950,69 @@ function POS() {
       </aside>
       </div>
     </div>
+
+    {showPay && (
+      <div className="modal-overlay" onClick={()=>!paying && setShowPay(false)}>
+        <div className="modal-card pay-modal" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
+          <div className="pay-amount">
+            <small>TOTAL AMOUNT</small>
+            <strong>{money(total)}</strong>
+          </div>
+
+          <p className="pay-label">Select Payment Method</p>
+          <div className="pay-methods">
+            {([
+              ["cash","Cash",<Banknote key="c" size={17}/>],
+              ["momo","Mobile Money",<Smartphone key="m" size={17}/>],
+              ["card","Card",<CreditCard key="k" size={17}/>],
+              ["gift","Gift Card",<Gift key="g" size={17}/>],
+              ["wallet","Wallet",<WalletCards key="w" size={17}/>]
+            ] as Array<[PaymentMethod,string,React.ReactNode]>).map(([m,label,icon])=>{
+              const isElectronic = m === "momo" || m === "card";
+              const disabled = isElectronic && !online;
+              return (
+                <button key={m} className={`${payment===m?"active":""}`} disabled={disabled}
+                  title={disabled?"Not available offline":""} onClick={()=>setPayment(m)}>
+                  {icon}<span>{label}</span>
+                  {disabled && <em>offline</em>}
+                  {payment===m && <CheckCircle2 size={15} className="pay-check"/>}
+                </button>
+              );
+            })}
+          </div>
+
+          {payment === "momo" && (
+            <div className="pay-fields">
+              <label>
+                <small>Mobile Money Provider</small>
+                <select value={momoProvider} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setMomoProvider(e.target.value)}>
+                  <option>MTN Mobile Money</option>
+                  <option>Telecel Cash</option>
+                  <option>AirtelTigo Money</option>
+                </select>
+              </label>
+              <label>
+                <small>Phone Number</small>
+                <input inputMode="tel" placeholder="055 123 4567" value={momoPhone}
+                  onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setMomoPhone(e.target.value)}/>
+              </label>
+            </div>
+          )}
+
+          {payment === "card" && (
+            <div className="pay-note"><CreditCard size={14}/> Customer will be prompted on the card terminal.</div>
+          )}
+          {payment === "cash" && (
+            <div className="pay-note"><Banknote size={14}/> Collect {money(total)} in cash and confirm below.</div>
+          )}
+
+          <button className="checkout pay-confirm" disabled={paying || (payment==="momo" && momoPhone.trim().length < 9)} onClick={complete}>
+            {paying ? <><Loader2 size={17} className="animate-spin"/> Processing…</> : <>Pay {money(total)}</>}
+          </button>
+          <button className="pay-cancel" disabled={paying} onClick={()=>setShowPay(false)}>Cancel</button>
+        </div>
+      </div>
+    )}
   </>;
 }
 
@@ -1094,15 +1405,48 @@ function GiftCards() {
   const create = useAppStore(s=>s.createGiftCard);
   const redeem = useAppStore(s=>s.redeemGiftCard);
   const [amount,setAmount]=useState("100"); const [code,setCode]=useState(""); const [redeemAmount,setRedeemAmount]=useState("50"); const [msg,setMsg]=useState("");
+  const [lookup,setLookup]=useState<{code:string;balance:number;status:GiftCardStatus}|null>(null);
+
+  const activeCard = cards.find(c => c.code === code.trim().toUpperCase());
+  const featured = lookup ?? (cards[0] ? { code: cards[0].code, balance: cards[0].balance, status: cards[0].status } : null);
+
+  const checkBalance = () => {
+    if (!activeCard) { setLookup(null); setMsg("No card found with that code."); return; }
+    setLookup({ code: activeCard.code, balance: activeCard.balance, status: activeCard.status });
+    setMsg(`${activeCard.code} • ${money(activeCard.balance)} available`);
+  };
+
   return <PageBox title="Gift Cards" subtitle="Sell, check and redeem EMD credit">
     <div className="gift-layout">
       <div className="gift-create">
-        <div className="gift-preview"><Crown/><small>EMD DRINKING SPORTS</small><strong>GIFT CARD</strong><span>BLACK • GOLD • GOOD TIMES</span></div>
-        <div className="inline-form"><input type="number" value={amount} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setAmount(e.target.value)}/><button className="primary" onClick={()=>{const c=create(Number(amount));setMsg(`Created ${c.code}`)}}><Gift/> Create card</button></div>
+        <div className="gift-preview">
+          <Crown/>
+          <small>EMD DRINKING SPORTS</small>
+          <strong>GIFT CARD</strong>
+          <span className="gift-code">{featured?.code ?? "EMD-XXXX-XXXX"}</span>
+          <div className="gift-preview-foot">
+            <div><small>Balance</small><b>{money(featured?.balance ?? 0)}</b></div>
+            <div><small>Status</small><b className={featured?.status === "active" ? "gold" : ""}>{(featured?.status ?? "—").toUpperCase()}</b></div>
+          </div>
+        </div>
+        <div className="gift-amount-row">
+          {[50,100,200,500].map(a=>(
+            <button key={a} className={amount===String(a)?"active":""} onClick={()=>setAmount(String(a))}>{money(a)}</button>
+          ))}
+        </div>
+        <div className="inline-form">
+          <input type="number" value={amount} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setAmount(e.target.value)}/>
+          <button className="primary" onClick={()=>{const c=create(Number(amount));setLookup({code:c.code,balance:c.balance,status:c.status});setMsg(`Created ${c.code}`)}}><Gift/> Buy Gift Card</button>
+        </div>
       </div>
       <div>
-        <h3>Redeem</h3>
-        <div className="stack-form"><input placeholder="Gift card code" value={code} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setCode(e.target.value)}/><input type="number" value={redeemAmount} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setRedeemAmount(e.target.value)}/><button className="secondary" onClick={()=>setMsg(redeem(code,Number(redeemAmount))?"Redeemed successfully":"Invalid card or insufficient balance")}>Redeem</button></div>
+        <h3>Check balance &amp; redeem</h3>
+        <div className="stack-form">
+          <input placeholder="Gift card code e.g. EMD-9XK2-44LM" value={code} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setCode(e.target.value)}/>
+          <button className="secondary" onClick={checkBalance}><Search size={15}/> Check Balance</button>
+          <input type="number" value={redeemAmount} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setRedeemAmount(e.target.value)}/>
+          <button className="secondary" onClick={()=>{const ok=redeem(code,Number(redeemAmount));setMsg(ok?"Redeemed successfully":"Invalid card or insufficient balance");if(ok){const c=cards.find(x=>x.code===code.trim().toUpperCase());if(c)setLookup({code:c.code,balance:c.balance,status:c.status});}}}><Gift size={15}/> Redeem Card</button>
+        </div>
         {msg&&<div className="notice">{msg}</div>}
       </div>
     </div>
