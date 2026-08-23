@@ -44,35 +44,36 @@ export default function CustomerPortal() {
     <div className="portal-shell">
       <div className="portal-inner">
         <div className="portal-header">
-          <div className="portal-brand">
-            <div className="portal-logo"><Crown size={22} /></div>
-            <div>
-              <strong>EMD</strong>
-              <span>BAR &amp; LOUNGE</span>
-            </div>
-          </div>
-          <div className={`portal-bar-status ${barOpen ? "open" : "closed"}`}>
-            <span className="status-dot" />
-            {barOpen ? "OPEN NOW" : "CLOSED"}
-          </div>
-        </div>
-
-        {customer && (
-          <div className="portal-welcome">
-            <div className="portal-avatar">{customer.name[0]}</div>
-            <div>
-              <strong>Welcome, {customer.name.split(" ")[0]}</strong>
-              <span>{customer.phone}</span>
-            </div>
-            <button className="portal-wallet" onClick={() => setTab("wallet")}>
-              <Wallet size={14} />
+          <div className="portal-header-left">
+            <div className="portal-brand">
+              <div className="portal-logo"><Crown size={22} /></div>
               <div>
-                <small>Wallet</small>
-                <b>{money(customer.walletBalance)}</b>
+                <strong>EMD</strong>
+                <span>BAR &amp; LOUNGE</span>
               </div>
-            </button>
+            </div>
+            <div className={`portal-bar-status ${barOpen ? "open" : "closed"}`}>
+              <span className="status-dot" />
+              {barOpen ? "OPEN NOW" : "CLOSED"}
+            </div>
           </div>
-        )}
+          {customer && (
+            <div className="portal-welcome">
+              <div className="portal-avatar">{customer.name[0]}</div>
+              <div className="portal-welcome-info">
+                <strong>Welcome, {customer.name.split(" ")[0]}</strong>
+                <span>{customer.phone}</span>
+              </div>
+              <button className="portal-wallet" onClick={() => setTab("wallet")}>
+                <Wallet size={14} />
+                <div>
+                  <small>Wallet</small>
+                  <b>{money(customer.walletBalance)}</b>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
         <nav className="portal-nav">
           {([
