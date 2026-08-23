@@ -428,7 +428,15 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 }
 
 /* ===== CUSTOMER PORTAL ===== */
-.portal-shell{min-height:100vh;max-width:480px;margin:0 auto;background:radial-gradient(circle at 50% -10%,rgba(212,175,55,.08),transparent 40%),var(--bg);padding-bottom:20px}
+.portal-shell{min-height:100vh;background:radial-gradient(circle at 50% -10%,rgba(212,175,55,.08),transparent 40%),var(--bg);padding-bottom:20px}
+.portal-inner{max-width:480px;margin:0 auto;min-height:100vh}
+@media(min-width:768px){
+  .portal-shell{display:flex;justify-content:center;align-items:flex-start;padding:24px 16px}
+  .portal-inner{max-width:520px;background:var(--bg);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-lg);min-height:auto}
+}
+@media(min-width:1024px){
+  .portal-inner{max-width:560px}
+}
 .portal-loading{display:grid;place-items:center;min-height:100vh;color:var(--muted);gap:10px}
 .portal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}
 .portal-brand{display:flex;align-items:center;gap:10px}
@@ -445,7 +453,8 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-welcome>div:nth-child(2){flex:1}
 .portal-welcome strong{display:block;font-size:15px}
 .portal-welcome span{display:block;font-size:11px;color:var(--muted)}
-.portal-wallet{display:flex;align-items:center;gap:6px;background:#111315;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.portal-wallet{display:flex;align-items:center;gap:6px;background:#111315;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;transition:var(--transition);color:inherit;font-family:inherit}
+.portal-wallet:hover{border-color:var(--yellow);background:rgba(249,195,23,.05)}
 .portal-wallet svg{color:var(--yellow)}
 .portal-wallet small{display:block;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .portal-wallet b{display:block;font-size:12px;color:var(--yellow)}
@@ -590,3 +599,34 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-pay-methods button.active{border-color:var(--yellow);color:var(--yellow);background:rgba(249,195,23,.08)}
 .portal-pay-methods button:hover:not(.active){border-color:#3a3d41}
 .portal-btn-cancel{background:none;border:0;color:var(--muted);font-size:11px;cursor:pointer;padding:4px}
+/* Wallet page */
+.portal-wallet-hero{position:relative;background:linear-gradient(135deg,#1a1408,#0a0808);border:1px solid #6c5717;border-radius:18px;padding:24px;overflow:hidden;text-align:center}
+.portal-wallet-hero-bg{position:absolute;inset:0;background:radial-gradient(circle at 70% 30%,rgba(249,195,23,.15),transparent 50%);pointer-events:none}
+.portal-wallet-hero small{position:relative;font-size:10px;letter-spacing:1.5px;color:var(--yellow);font-weight:800}
+.portal-wallet-hero strong{position:relative;display:block;font-size:36px;color:var(--gold);font-family:Georgia,serif;margin:6px 0 14px}
+.portal-wallet-hero-info{position:relative;display:flex;justify-content:center;gap:20px}
+.portal-wallet-hero-info div{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.portal-wallet-hero-info svg{color:var(--yellow)}
+.portal-wallet-how{background:linear-gradient(145deg,#0e1011,#0a0b0c);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.portal-wallet-how>strong{font-size:14px;margin-bottom:4px}
+.portal-wallet-step{display:flex;gap:10px;align-items:flex-start}
+.portal-wallet-step-num{width:24px;height:24px;border-radius:50%;background:var(--yellow);color:#0a0a0a;display:grid;place-items:center;font-weight:900;font-size:12px;flex-shrink:0}
+.portal-wallet-step b{font-size:12px;display:block}
+.portal-wallet-step p{font-size:11px;color:var(--muted);margin:2px 0 0;line-height:1.4}
+.portal-topup{background:linear-gradient(145deg,#0e1011,#0a0b0c);border:1px solid #3d3208;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.portal-topup>strong{font-size:14px}
+.portal-topup-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.portal-topup-amounts button{background:#17191b;border:1px solid var(--line);color:#c8c8c8;border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition)}
+.portal-topup-amounts button.active{border-color:var(--yellow);color:var(--yellow);background:rgba(249,195,23,.08)}
+.portal-topup-amounts button:hover:not(.active){border-color:#3a3d41}
+.portal-topup-custom{display:flex;flex-direction:column;gap:4px}
+.portal-topup-custom small{font-size:11px;color:var(--muted)}
+.portal-topup-custom input{background:#101214;color:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;outline:none;transition:var(--transition)}
+.portal-topup-custom input:focus{border-color:#66520d}
+.portal-topup>small{font-size:11px;color:var(--muted)}
+.portal-topup-btn{margin-top:4px}
+.portal-wallet-tips{background:rgba(249,195,23,.04);border:1px solid #3d3208;border-radius:14px;padding:14px}
+.portal-wallet-tips>strong{font-size:13px;display:block;margin-bottom:6px}
+.portal-wallet-tips p{font-size:11px;color:var(--muted);margin:4px 0;line-height:1.5}
+.portal-waiters-list{display:flex;flex-direction:column;gap:10px}
+.portal-waiter-hint{font-size:10px;color:var(--muted)}

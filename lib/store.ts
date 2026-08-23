@@ -7,6 +7,13 @@ import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
 import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
+// Clean up old persisted keys from previous versions
+if (typeof window !== "undefined") {
+  ["emd-drinking-sports", "emd-drinking-sports-v1", "emd-drinking-sports-v2", "emd-drinking-sports-v3"].forEach(k => {
+    try { localStorage.removeItem(k); } catch { /* ignore */ }
+  });
+}
+
 interface AppState {
   products: Product[];
   customers: Customer[];
@@ -590,28 +597,32 @@ export const useAppStore = create<AppState>()(
       }
     }),
     {
-      name: "emd-drinking-sports-v3",
-      version: 3,
-      migrate: (persistedState: unknown, version: number) => {
-        const s = persistedState as Partial<AppState> | undefined;
-        // On upgrade from v1/v2, reset products and matches to latest seed
-        if (version < 3 && s) {
-          s.products = productsSeed;
-          s.matches = matchesSeed;
-          s.tables = tablesSeed;
-          s.staff = staffSeed;
-          s.customers = customersSeed;
-          s.giftCards = giftCardsSeed;
-          s.debts = debtsSeed;
-          s.sales = salesSeed;
-          s.expenses = expensesSeed;
-          if (!s.customerOrders) s.customerOrders = [];
-          if (!s.waiterCalls) s.waiterCalls = [];
-          if (!s.chatMessages) s.chatMessages = [];
-          if (!s.eventBookings) s.eventBookings = [];
-          if (s.barOpen === undefined) s.barOpen = true;
-        }
-        return s as AppState;
+      name: "emd-drinking-sports-v4",
+      version: 4,
+      migrate: () => undefined,
+      merge: (persistedState, currentState) => {
+        // Always force fresh seed data for products/tables/etc
+        const persisted = persistedState as Partial<AppState> | undefined;
+        return {
+          ...currentState,
+          ...persisted,
+          // Always override with latest seed data
+          products: productsSeed,
+          tables: tablesSeed,
+          staff: staffSeed,
+          customers: customersSeed,
+          giftCards: giftCardsSeed,
+          debts: debtsSeed,
+          sales: salesSeed,
+          expenses: expensesSeed,
+          matches: matchesSeed,
+          // Preserve user-created data if it exists
+          customerOrders: persisted?.customerOrders ?? [],
+          waiterCalls: persisted?.waiterCalls ?? [],
+          chatMessages: persisted?.chatMessages ?? [],
+          eventBookings: persisted?.eventBookings ?? [],
+          barOpen: persisted?.barOpen ?? true,
+        };
       }
     }
   )

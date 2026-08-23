@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Minus, Clock, Users, Trophy, Calendar,
   CheckCircle2, AlertTriangle, Phone, MessageSquare, Bell, MapPin,
   Star, Wallet, Receipt, ArrowRight, Home, ShoppingBag, Utensils,
-  Loader2, PartyPopper, Smartphone, CircleDollarSign
+  Loader2, PartyPopper, Smartphone, CircleDollarSign, CreditCard
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
@@ -13,7 +13,7 @@ import type { Product, ProductCategory, CartLine } from "@/lib/types";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
-type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter";
+type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet";
 
 export default function CustomerPortal() {
   const [tab, setTab] = useState<PortalTab>("home");
@@ -42,60 +42,64 @@ export default function CustomerPortal() {
 
   return (
     <div className="portal-shell">
-      <div className="portal-header">
-        <div className="portal-brand">
-          <div className="portal-logo"><Crown size={22} /></div>
-          <div>
-            <strong>EMD</strong>
-            <span>BAR &amp; LOUNGE</span>
-          </div>
-        </div>
-        <div className={`portal-bar-status ${barOpen ? "open" : "closed"}`}>
-          <span className="status-dot" />
-          {barOpen ? "OPEN NOW" : "CLOSED"}
-        </div>
-      </div>
-
-      {customer && (
-        <div className="portal-welcome">
-          <div className="portal-avatar">{customer.name[0]}</div>
-          <div>
-            <strong>Welcome, {customer.name.split(" ")[0]}</strong>
-            <span>{customer.phone}</span>
-          </div>
-          <div className="portal-wallet">
-            <Wallet size={14} />
+      <div className="portal-inner">
+        <div className="portal-header">
+          <div className="portal-brand">
+            <div className="portal-logo"><Crown size={22} /></div>
             <div>
-              <small>Wallet</small>
-              <b>{money(customer.walletBalance)}</b>
+              <strong>EMD</strong>
+              <span>BAR &amp; LOUNGE</span>
             </div>
           </div>
+          <div className={`portal-bar-status ${barOpen ? "open" : "closed"}`}>
+            <span className="status-dot" />
+            {barOpen ? "OPEN NOW" : "CLOSED"}
+          </div>
         </div>
-      )}
 
-      <nav className="portal-nav">
-        {([
-          ["home", "Home", Home],
-          ["events", "Events", Trophy],
-          ["menu", "Menu", Utensils],
-          ["tables", "Tables", MapPin],
-          ["orders", "My Orders", Receipt],
-          ["waiter", "Waiter", Bell]
-        ] as Array<[PortalTab, string, typeof Home]>).map(([key, label, Icon]) => (
-          <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-            <Icon size={18} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </nav>
+        {customer && (
+          <div className="portal-welcome">
+            <div className="portal-avatar">{customer.name[0]}</div>
+            <div>
+              <strong>Welcome, {customer.name.split(" ")[0]}</strong>
+              <span>{customer.phone}</span>
+            </div>
+            <button className="portal-wallet" onClick={() => setTab("wallet")}>
+              <Wallet size={14} />
+              <div>
+                <small>Wallet</small>
+                <b>{money(customer.walletBalance)}</b>
+              </div>
+            </button>
+          </div>
+        )}
 
-      <div className="portal-content">
-        {tab === "home" && <PortalHome barOpen={barOpen} onTab={setTab} />}
-        {tab === "events" && <PortalEvents customerId={customerId} customerName={customer?.name ?? ""} />}
-        {tab === "menu" && <PortalMenu customerId={customerId} selectedTableId={selectedTableId} />}
-        {tab === "tables" && <PortalTables selectedTableId={selectedTableId} onSelect={setSelectedTableId} />}
-        {tab === "orders" && <PortalOrders customerId={customerId} />}
-        {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
+        <nav className="portal-nav">
+          {([
+            ["home", "Home", Home],
+            ["events", "Events", Trophy],
+            ["menu", "Menu", Utensils],
+            ["tables", "Tables", MapPin],
+            ["orders", "My Orders", Receipt],
+            ["waiter", "Waiter", Bell],
+            ["wallet", "Wallet", Wallet]
+          ] as Array<[PortalTab, string, typeof Home]>).map(([key, label, Icon]) => (
+            <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="portal-content">
+          {tab === "home" && <PortalHome barOpen={barOpen} onTab={setTab} />}
+          {tab === "events" && <PortalEvents customerId={customerId} customerName={customer?.name ?? ""} />}
+          {tab === "menu" && <PortalMenu customerId={customerId} selectedTableId={selectedTableId} />}
+          {tab === "tables" && <PortalTables selectedTableId={selectedTableId} onSelect={setSelectedTableId} />}
+          {tab === "orders" && <PortalOrders customerId={customerId} />}
+          {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
+          {tab === "wallet" && <PortalWallet customerId={customerId} />}
+        </div>
       </div>
     </div>
   );
@@ -534,7 +538,6 @@ function PortalWaiter({ customerId, selectedTableId }: { customerId: string; sel
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const waiters = staff.filter(s => s.role === "waiter" && s.active);
-  const assignedWaiter = waiters[0];
   const myCalls = waiterCalls.filter(c => c.customerId === customerId);
   const myMessages = chatMessages.filter(m => m.customerId === customerId || (selectedTableId && m.tableId === selectedTableId));
 
@@ -558,28 +561,25 @@ function PortalWaiter({ customerId, selectedTableId }: { customerId: string; sel
       <h2 className="portal-title">Your Waiter</h2>
       <p className="portal-subtitle">Call for service or send a message</p>
 
-      {!selectedTableId ? (
-        <div className="portal-empty">
-          <Bell size={40} />
-          <p>Select a table first to connect with your waiter.</p>
-        </div>
-      ) : (
-        <>
-          {assignedWaiter && (
-            <div className="portal-waiter-card">
-              <div className="portal-waiter-avatar">{assignedWaiter.name[0]}</div>
-              <div className="portal-waiter-info">
-                <strong>{assignedWaiter.name}</strong>
-                <span>Your Waiter</span>
-                <small>Table {selectedTableId.replace("t", "")}</small>
-              </div>
-              <button className="portal-btn-call" onClick={handleCall}>
-                <Phone size={18} />
-                Call
-              </button>
+      {/* Show all waiters */}
+      <div className="portal-waiters-list">
+        {waiters.map(w => (
+          <div key={w.id} className="portal-waiter-card">
+            <div className="portal-waiter-avatar">{w.name[0]}</div>
+            <div className="portal-waiter-info">
+              <strong>{w.name}</strong>
+              <span>Waiter</span>
+              <small>{w.ordersHandled} orders handled</small>
             </div>
-          )}
+            {selectedTableId
+              ? <button className="portal-btn-call" onClick={handleCall}><Phone size={18} /> Call</button>
+              : <small className="portal-waiter-hint">Select a table to call</small>}
+          </div>
+        ))}
+      </div>
 
+      {selectedTableId ? (
+        <>
           {myCalls.length > 0 && (
             <div className="portal-call-status">
               {myCalls.slice(0, 3).map(c => (
@@ -618,7 +618,125 @@ function PortalWaiter({ customerId, selectedTableId }: { customerId: string; sel
             </div>
           </div>
         </>
+      ) : (
+        <div className="portal-alert">
+          <AlertTriangle size={16} />
+          <span>Select a table from the Tables tab to enable chat and calling</span>
+        </div>
       )}
+    </div>
+  );
+}
+
+function PortalWallet({ customerId }: { customerId: string }) {
+  const customers = useAppStore(s => s.customers);
+  const topUpWallet = useAppStore(s => s.topUpWallet);
+  const customer = customers.find(c => c.id === customerId);
+  const [amount, setAmount] = useState(20);
+  const [method, setMethod] = useState<"momo" | "card" | "cash">("momo");
+  const [toppedUp, setToppedUp] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  const quickAmounts = [10, 20, 50, 100, 200, 500];
+
+  const handleTopUp = () => {
+    if (amount <= 0) return;
+    setProcessing(true);
+    setTimeout(() => {
+      topUpWallet(customerId, amount);
+      setProcessing(false);
+      setToppedUp(true);
+      setTimeout(() => setToppedUp(false), 3000);
+    }, 1200);
+  };
+
+  if (!customer) return null;
+
+  return (
+    <div className="portal-section">
+      <h2 className="portal-title">My Wallet</h2>
+      <p className="portal-subtitle">Top up your wallet to pay for orders instantly</p>
+
+      {/* Balance card */}
+      <div className="portal-wallet-hero">
+        <div className="portal-wallet-hero-bg" />
+        <small>CURRENT BALANCE</small>
+        <strong>{money(customer.walletBalance)}</strong>
+        <div className="portal-wallet-hero-info">
+          <div><Star size={14} /> <span>{customer.loyaltyPoints} loyalty points</span></div>
+          <div><Receipt size={14} /> <span>{customer.visitCount} visits</span></div>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="portal-wallet-how">
+        <strong>How EMD Wallet Works</strong>
+        <div className="portal-wallet-step">
+          <div className="portal-wallet-step-num">1</div>
+          <div><b>Top up</b><p>Add money to your wallet using MoMo, card, or cash at the bar.</p></div>
+        </div>
+        <div className="portal-wallet-step">
+          <div className="portal-wallet-step-num">2</div>
+          <div><b>Order</b><p>Place food and drink orders from your table using the Menu tab.</p></div>
+        </div>
+        <div className="portal-wallet-step">
+          <div className="portal-wallet-step-num">3</div>
+          <div><b>Pay instantly</b><p>When your order is served, pay with one tap from your wallet. No waiting for the bill.</p></div>
+        </div>
+        <div className="portal-wallet-step">
+          <div className="portal-wallet-step-num">4</div>
+          <div><b>Earn rewards</b><p>Every purchase earns loyalty points. Redeem for discounts and free items.</p></div>
+        </div>
+      </div>
+
+      {/* Top up form */}
+      <div className="portal-topup">
+        <strong>Top Up Wallet</strong>
+
+        <div className="portal-topup-amounts">
+          {quickAmounts.map(a => (
+            <button key={a} className={amount === a ? "active" : ""} onClick={() => setAmount(a)}>
+              {money(a)}
+            </button>
+          ))}
+        </div>
+
+        <label className="portal-topup-custom">
+          <small>Custom amount (GHS)</small>
+          <input type="number" min="1" value={amount} onChange={e => setAmount(Number(e.target.value) || 0)} />
+        </label>
+
+        <small>Payment method:</small>
+        <div className="portal-pay-methods">
+          <button className={method === "momo" ? "active" : ""} onClick={() => setMethod("momo")}>
+            <Smartphone size={14} /> MoMo
+          </button>
+          <button className={method === "card" ? "active" : ""} onClick={() => setMethod("card")}>
+            <CreditCard size={14} /> Card
+          </button>
+          <button className={method === "cash" ? "active" : ""} onClick={() => setMethod("cash")}>
+            <CircleDollarSign size={14} /> Cash
+          </button>
+        </div>
+
+        <button className="portal-btn-primary portal-topup-btn" onClick={handleTopUp} disabled={amount <= 0 || processing}>
+          {processing ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><Wallet size={16} /> Top Up {money(amount)}</>}
+        </button>
+
+        {toppedUp && (
+          <div className="portal-success">
+            <CheckCircle2 size={18} />
+            <span>Wallet topped up with {money(amount)}! New balance: {money(customer.walletBalance + amount)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Spending info */}
+      <div className="portal-wallet-tips">
+        <strong>Wallet Tips</strong>
+        <p>Use your wallet to pay for orders from the My Orders tab when they're served. Wallet payments are instant — no need to wait for a waiter to bring the bill.</p>
+        <p>You can also pay with MoMo or cash directly from the My Orders tab if you prefer.</p>
+      </div>
     </div>
   );
 }
