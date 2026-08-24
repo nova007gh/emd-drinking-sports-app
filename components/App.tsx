@@ -18,6 +18,7 @@ import { buildReceipt, browserPrinter } from "@/lib/receipt";
 import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
 import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus } from "@/lib/types";
+import type { Permission } from "@/lib/auth/roles";
 
 type Page =
   | "Dashboard" | "POS / Sales" | "Tables" | "Inventory" | "Customers" | "Debts"
@@ -49,6 +50,24 @@ const roleLabels: Record<AppRole, string> = {
   manager: "Manager",
   cashier: "Cashier",
   waiter: "Waiter"
+};
+
+/** Maps each page to the permission a role needs to view it. Undefined = everyone. */
+const pagePermission: Partial<Record<Page, Permission>> = {
+  "POS / Sales": "sell",
+  "Tables": "manage_tables",
+  "Inventory": "manage_inventory",
+  "Customers": "manage_customers",
+  "Debts": "manage_debts",
+  "Payments": "sell",
+  "Gift Cards": "manage_customers",
+  "Wallets & Loyalty": "manage_customers",
+  "Reports": "view_reports",
+  "AI Assistant": "view_reports",
+  "Event Management": "manage_tables",
+  "Expenses": "manage_expenses",
+  "Staff": "manage_staff",
+  "Settings": "manage_settings",
 };
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
@@ -96,12 +115,17 @@ function AppInner() {
   }, [user?.id, setCashierId]);
 
   const filteredNav = nav.filter((item) => {
-    if (item.label === "Staff" && !can("manage_staff")) return false;
-    if (item.label === "Settings" && !can("manage_settings")) return false;
-    if (item.label === "Expenses" && !can("manage_expenses")) return false;
-    if (item.label === "Inventory" && !can("manage_inventory")) return false;
-    return true;
+    const perm = pagePermission[item.label];
+    return !perm || can(perm);
   });
+
+  // If the current page is not accessible to this role, snap to a safe page.
+  useEffect(() => {
+    const perm = pagePermission[page];
+    if (perm && !can(perm)) {
+      setPage("Dashboard");
+    }
+  }, [role, page, can]);
 
   if (isLoading) {
     return (
@@ -205,20 +229,20 @@ function AppInner() {
         <section className="content">
           <React.Suspense fallback={<div className="page-loading"><Loader2 className="auth-spinner" size={24}/> Loading…</div>}>
             {page === "Dashboard" && <Dashboard onNavigate={setPage}/>}
-            {page === "POS / Sales" && <POS/>}
-            {page === "Tables" && <Tables/>}
-            {page === "Inventory" && <Inventory/>}
-            {page === "Customers" && <Customers/>}
-            {page === "Debts" && <Debts/>}
-            {page === "Payments" && <Payments/>}
-            {page === "Gift Cards" && <GiftCards/>}
-            {page === "Wallets & Loyalty" && <Wallets/>}
-            {page === "Reports" && <Reports/>}
-            {page === "AI Assistant" && <AIAssistant/>}
-            {page === "Event Management" && <Football/>}
-            {page === "Expenses" && <Expenses/>}
-            {page === "Staff" && <Staff/>}
-            {page === "Settings" && <SettingsPage/>}
+            {page === "POS / Sales" && (can("sell") ? <POS/> : <AccessDenied/>)}
+            {page === "Tables" && (can("manage_tables") ? <Tables/> : <AccessDenied/>)}
+            {page === "Inventory" && (can("manage_inventory") ? <Inventory/> : <AccessDenied/>)}
+            {page === "Customers" && (can("manage_customers") ? <Customers/> : <AccessDenied/>)}
+            {page === "Debts" && (can("manage_debts") ? <Debts/> : <AccessDenied/>)}
+            {page === "Payments" && (can("sell") ? <Payments/> : <AccessDenied/>)}
+            {page === "Gift Cards" && (can("manage_customers") ? <GiftCards/> : <AccessDenied/>)}
+            {page === "Wallets & Loyalty" && (can("manage_customers") ? <Wallets/> : <AccessDenied/>)}
+            {page === "Reports" && (can("view_reports") ? <Reports/> : <AccessDenied/>)}
+            {page === "AI Assistant" && (can("view_reports") ? <AIAssistant/> : <AccessDenied/>)}
+            {page === "Event Management" && (can("manage_tables") ? <Football/> : <AccessDenied/>)}
+            {page === "Expenses" && (can("manage_expenses") ? <Expenses/> : <AccessDenied/>)}
+            {page === "Staff" && (can("manage_staff") ? <Staff/> : <AccessDenied/>)}
+            {page === "Settings" && (can("manage_settings") ? <SettingsPage/> : <AccessDenied/>)}
           </React.Suspense>
         </section>
 
@@ -256,6 +280,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const tables = useAppStore((s) => s.tables);
   const expenses = useAppStore((s) => s.expenses);
   const debts = useAppStore((s) => s.debts);
+  const { can, role, userName } = useAuth();
   const insights = useMemo(() => businessInsights(products, customers, sales), [products, customers, sales]);
   const profit = useMemo(() => estimatedProfitCalc(sales, expenses, products), [sales, expenses, products]);
   const aging = useMemo(() => debtAging(debts), [debts]);
@@ -288,26 +313,97 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   if (insights.slowMoving.length > 0) attentionItems.push({ text: `${insights.slowMoving.length} slow-moving products`, danger: false });
 
   const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const isWaiter = role === "waiter";
+  const isCashier = role === "cashier";
+  const greeting = isWaiter ? "Tables & Orders" : isCashier ? "Sales Dashboard" : "Business Dashboard";
 
   return <>
-    <div className="page-title"><div><p>WELCOME BACK</p><h1>Business Dashboard</h1><span>{todayStr}</span></div><button className="primary" onClick={() => onNavigate("POS / Sales")}><Plus size={18}/> New sale</button></div>
+    <div className="page-title"><div><p>WELCOME BACK, {userName.toUpperCase()}</p><h1>{greeting}</h1><span>{todayStr}</span></div>{can("sell") && <button className="primary" onClick={() => onNavigate("POS / Sales")}><Plus size={18}/> New sale</button>}</div>
 
     <div className="metric-grid">
-      <Metric label="TODAY'S SALES" value={money(revenueTrend.today)} sub="live total" trend={revenueTrend} icon={<CircleDollarSign/>}/>
-      <Metric label="ITEMS SOLD" value={String(unitsTrend.today)} sub="today" trend={unitsTrend} icon={<Beer/>}/>
+      {can("view_reports") && <Metric label="TODAY'S SALES" value={money(revenueTrend.today)} sub="live total" trend={revenueTrend} icon={<CircleDollarSign/>}/>}
+      {can("sell") && <Metric label="ITEMS SOLD" value={String(unitsTrend.today)} sub="today" trend={unitsTrend} icon={<Beer/>}/>}
       <Metric label="OPEN TABLES" value={`${tables.filter(t=>t.occupied).length} / ${tables.length}`} sub={`${tables.filter(t=>t.occupied).length} occupied`} icon={<LayoutGrid/>}/>
-      <Metric label="TOTAL DEBTS" value={money(debt)} sub={`${customers.filter(c=>c.debt>0).length} customers`} danger icon={<Users/>}/>
-      <Metric label="LOW STOCK ITEMS" value={String(insights.lowStock.length)} sub="View items" danger icon={<AlertTriangle/>} onSubClick={()=>onNavigate("Inventory")}/>
+      {can("manage_debts") && <Metric label="TOTAL DEBTS" value={money(debt)} sub={`${customers.filter(c=>c.debt>0).length} customers`} danger icon={<Users/>}/>}
+      {can("manage_inventory") && <Metric label="LOW STOCK ITEMS" value={String(insights.lowStock.length)} sub="View items" danger icon={<AlertTriangle/>} onSubClick={()=>onNavigate("Inventory")}/>}
     </div>
 
-    <div className="insight-card-row">
-      <InsightCard tone="gold" icon={<Trophy/>} label="Top Selling" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} footer="Today"/>
-      <InsightCard tone="red" icon={<TrendingDown/>} label="Least Selling" value={insights.leastSeller?.name ?? "—"} sub={`${insights.leastSeller?.units ?? 0} units`} footer="Today"/>
-      <InsightCard tone="gold" icon={<AlertTriangle/>} label="Low Stock Alert" value={`${insights.lowStock.length} Items`} sub="Need attention" footer="View Items" onClick={()=>onNavigate("Inventory")}/>
-      <InsightCard tone="green" icon={<Package/>} label="High Inventory" value={insights.highStock[0]?.name ?? "—"} sub={`${insights.highStock[0]?.stock ?? 0} in stock`} footer="In Stock"/>
-      <InsightCard tone="red" icon={<Users/>} label="Customers Owing" value={`${customersOwing.length} Customers`} sub="Owing > GHS 200" footer="View Debtors" onClick={()=>onNavigate("Debts")}/>
-    </div>
+    {can("view_reports") && (
+      <div className="insight-card-row">
+        <InsightCard tone="gold" icon={<Trophy/>} label="Top Selling" value={insights.bestSeller?.name ?? "—"} sub={`${insights.bestSeller?.units ?? 0} units`} footer="Today"/>
+        <InsightCard tone="red" icon={<TrendingDown/>} label="Least Selling" value={insights.leastSeller?.name ?? "—"} sub={`${insights.leastSeller?.units ?? 0} units`} footer="Today"/>
+        {can("manage_inventory") && <InsightCard tone="gold" icon={<AlertTriangle/>} label="Low Stock Alert" value={`${insights.lowStock.length} Items`} sub="Need attention" footer="View Items" onClick={()=>onNavigate("Inventory")}/>}
+        {can("manage_inventory") && <InsightCard tone="green" icon={<Package/>} label="High Inventory" value={insights.highStock[0]?.name ?? "—"} sub={`${insights.highStock[0]?.stock ?? 0} in stock`} footer="In Stock"/>}
+        {can("manage_debts") && <InsightCard tone="red" icon={<Users/>} label="Customers Owing" value={`${customersOwing.length} Customers`} sub="Owing > GHS 200" footer="View Debtors" onClick={()=>onNavigate("Debts")}/>}
+      </div>
+    )}
 
+    {isWaiter && (
+      <div className="dashboard-grid">
+        <Panel title="Open tables" className="span2" action={<button className="panel-link" onClick={()=>onNavigate("Tables")}>View all</button>}>
+          <div className="responsive-table compact"><table>
+            <thead><tr><th>Table</th><th>Status</th><th>Bill</th></tr></thead>
+            <tbody>
+              {tables.map(t => (
+                <tr key={t.id}><td><b>{t.name}</b></td><td>{t.occupied ? "Occupied" : "Free"}</td><td>{money(t.bill)}</td></tr>
+              ))}
+            </tbody>
+          </table></div>
+        </Panel>
+        <Panel title="Quick actions">
+          <div className="quick-actions">
+            <button onClick={() => onNavigate("POS / Sales")}><ShoppingCart/> New sale</button>
+            <button onClick={() => onNavigate("Tables")}><LayoutGrid/> Manage tables</button>
+            <button onClick={() => onNavigate("Customers")}><Users/> Customers</button>
+          </div>
+        </Panel>
+      </div>
+    )}
+
+    {isCashier && (
+      <div className="dashboard-grid">
+        <Panel title="Sales overview" className="span2" action={<span className="panel-tag">This Week</span>}>
+          <div className="chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={weeklySeries}>
+            <XAxis dataKey="name" stroke="#747474" fontSize={11}/><YAxis stroke="#747474" fontSize={11}/><Tooltip contentStyle={{background:"#111315",border:"1px solid #333",borderRadius:"10px",fontSize:"12px"}}/>
+            <Line type="monotone" dataKey="value" stroke="#f9c317" strokeWidth={3} dot={{fill:"#f9c317",r:4}} activeDot={{r:6}}/>
+          </LineChart></ResponsiveContainer></div>
+        </Panel>
+        <Panel title="Sales by payment method">
+          <div className="chart small"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={paymentData} dataKey="value" innerRadius={55} outerRadius={80} paddingAngle={3}>
+            {paymentData.map((_, i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
+          </Pie></PieChart></ResponsiveContainer></div>
+          <div className="legend">{paymentData.map((d,i)=>(
+            <span key={d.name}><i style={{background:COLORS[i%COLORS.length]}}/>{d.name.toUpperCase()} <b>{paymentTotal>0?Math.round((d.value/paymentTotal)*100):0}%</b></span>
+          ))}</div>
+        </Panel>
+        <Panel title="Recent sales" className="span2" action={<button className="panel-link" onClick={()=>onNavigate("POS / Sales")}>View all</button>}>
+          <div className="responsive-table compact"><table>
+            <thead><tr><th>Item</th><th>Type</th><th>Table</th><th>Amount</th><th>Time</th></tr></thead>
+            <tbody>
+              {recentSaleLines.length === 0 && <tr><td colSpan={5} className="muted-text">No sales yet.</td></tr>}
+              {recentSaleLines.map(({line, sale})=>(
+                <tr key={`${sale.id}-${line.id}`}>
+                  <td>{line.name}</td>
+                  <td><span className="mode-tag">{line.mode}</span></td>
+                  <td>{tables.find(t=>t.id===sale.tableId)?.name ?? "—"}</td>
+                  <td>{money(line.unitPrice*line.quantity)}</td>
+                  <td>{new Date(sale.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </Panel>
+        <Panel title="Quick actions">
+          <div className="quick-actions">
+            <button onClick={() => onNavigate("POS / Sales")}><ShoppingCart/> New sale</button>
+            <button onClick={() => onNavigate("Tables")}><LayoutGrid/> Manage tables</button>
+            <button onClick={() => onNavigate("Customers")}><Users/> Customers</button>
+          </div>
+        </Panel>
+      </div>
+    )}
+
+    {!isWaiter && !isCashier && (<>
     <div className="dashboard-grid">
       <Panel title="Sales overview" className="span2" action={<span className="panel-tag">This Week</span>}>
         <div className="chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={weeklySeries}>
@@ -329,7 +425,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
         </>}
       </Panel>
 
-      <Panel title="Top debtors" action={<button className="panel-link" onClick={()=>onNavigate("Debts")}>View all</button>}>
+      {can("manage_debts") && <Panel title="Top debtors" action={<button className="panel-link" onClick={()=>onNavigate("Debts")}>View all</button>}>
         <ol className="debtor-list">
           {topDebtors.length === 0 && <li className="muted-text">No outstanding debts.</li>}
           {topDebtors.map((c) => (
@@ -340,7 +436,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             </li>
           ))}
         </ol>
-      </Panel>
+      </Panel>}
       <Panel title="Sales by payment method">
         <div className="chart small"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={paymentData} dataKey="value" innerRadius={55} outerRadius={80} paddingAngle={3}>
           {paymentData.map((_, i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
@@ -350,7 +446,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
         ))}</div>
       </Panel>
 
-      <Panel title="Low stock items" action={<button className="panel-link" onClick={()=>onNavigate("Inventory")}>View all</button>}>
+      {can("manage_inventory") && <Panel title="Low stock items" action={<button className="panel-link" onClick={()=>onNavigate("Inventory")}>View all</button>}>
         <div className="responsive-table compact"><table>
           <thead><tr><th>Product</th><th>Stock</th><th>Reorder Level</th><th>Status</th></tr></thead>
           <tbody>
@@ -360,7 +456,7 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             ))}
           </tbody>
         </table></div>
-      </Panel>
+      </Panel>}
       <Panel title="Recent sales" action={<button className="panel-link" onClick={()=>onNavigate("POS / Sales")}>View all</button>}>
         <div className="responsive-table compact"><table>
           <thead><tr><th>Item</th><th>Type</th><th>Table</th><th>Amount</th><th>Time</th></tr></thead>
@@ -414,16 +510,17 @@ function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
     </div>
 
     <DashboardAssistant onNavigate={onNavigate}/>
+    </>)}
 
     <div className="feature-strip">
       {[
         { icon: <Beer/>, title: "Bottle & Shot Sales", sub: "Sell full bottles or tots" },
         { icon: <LayoutGrid/>, title: "Table Management", sub: "Track tables & open tabs" },
-        { icon: <Package/>, title: "Inventory Control", sub: "Real-time stock tracking" },
-        { icon: <ReceiptText/>, title: "Credit / Debts", sub: "Manage customer debts" },
-        { icon: <BarChart3/>, title: "Reports & Analytics", sub: "Powerful business insights" },
-        { icon: <Bot/>, title: "AI Assistant", sub: "Smart business advisor" },
-        { icon: <Trophy/>, title: "Event Management", sub: "Schedule & promos" }
+        ...(can("manage_inventory") ? [{ icon: <Package/>, title: "Inventory Control", sub: "Real-time stock tracking" }] : []),
+        ...(can("manage_debts") ? [{ icon: <ReceiptText/>, title: "Credit / Debts", sub: "Manage customer debts" }] : []),
+        ...(can("view_reports") ? [{ icon: <BarChart3/>, title: "Reports & Analytics", sub: "Powerful business insights" }] : []),
+        ...(can("view_reports") ? [{ icon: <Bot/>, title: "AI Assistant", sub: "Smart business advisor" }] : []),
+        ...(can("manage_tables") ? [{ icon: <Trophy/>, title: "Event Management", sub: "Schedule & promos" }] : []),
       ].map((f) => (
         <div className="feature-item" key={f.title}>
           <div className="feature-icon">{f.icon}</div>
@@ -1628,8 +1725,15 @@ function Staff() {
   </PageBox>;
 }
 
-function SettingsPage() {
-  const { role, userName } = useAuth();
+function AccessDenied() {
+  return <PageBox title="Access Denied" subtitle="You don't have permission to view this page">
+    <Panel title="Restricted area">
+      <p className="muted-text">Your current role doesn't include access to this section. Switch roles from the top bar if you have the credentials, or contact an administrator.</p>
+    </Panel>
+  </PageBox>;
+}
+
+function SettingsPage() {  const { role, userName } = useAuth();
   const barOpen = useAppStore(s => s.barOpen);
   const toggleBarOpen = useAppStore(s => s.toggleBarOpen);
   return <PageBox title="Settings" subtitle="Business preferences and integrations">
