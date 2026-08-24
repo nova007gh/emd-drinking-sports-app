@@ -18,8 +18,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const authCookie = request.cookies.get("sb-access-token");
-  if (!authCookie) {
+  // @supabase/ssr stores the session in cookies named sb-<project-ref>-auth-token
+  // Also check legacy sb-access-token for backwards compatibility
+  const cookieNames = request.cookies.getAll().map(c => c.name);
+  const hasAuthCookie = cookieNames.includes("sb-access-token") ||
+    cookieNames.some(k => k.startsWith("sb-") && k.includes("auth-token"));
+  if (!hasAuthCookie) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }

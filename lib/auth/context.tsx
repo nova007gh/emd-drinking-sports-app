@@ -74,12 +74,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileErr } = await supabase
             .from("profiles")
             .select("full_name, role, avatar_url")
             .eq("id", session.user.id)
             .single();
-          if (profile) {
+          if (profileErr) {
+            const meta = session.user.user_metadata as { name?: string; role?: string; full_name?: string };
+            const authUser: AuthUser = {
+              id: session.user.id,
+              email: session.user.email ?? "",
+              name: meta?.name ?? meta?.full_name ?? session.user.email?.split("@")[0] ?? "User",
+              role: (meta?.role as AppRole) ?? "waiter",
+              avatarUrl: undefined
+            };
+            setUser(authUser);
+            setRoleState(authUser.role);
+            setUserName(authUser.name);
+          } else if (profile) {
             const authUser: AuthUser = {
               id: session.user.id,
               email: session.user.email ?? "",
@@ -125,12 +137,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select("full_name, role, avatar_url")
           .eq("id", data.user.id)
           .single();
-        if (profile) {
+        if (profileErr) {
+          // Profile fetch failed — fall back to user_metadata so login still works
+          const meta = data.user.user_metadata as { name?: string; role?: string; full_name?: string };
+          const authUser: AuthUser = {
+            id: data.user.id,
+            email: data.user.email ?? "",
+            name: meta?.name ?? meta?.full_name ?? email.split("@")[0],
+            role: (meta?.role as AppRole) ?? "waiter",
+            avatarUrl: undefined
+          };
+          setUser(authUser);
+          setRoleState(authUser.role);
+          setUserName(authUser.name);
+        } else if (profile) {
           const authUser: AuthUser = {
             id: data.user.id,
             email: data.user.email ?? "",
