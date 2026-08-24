@@ -13,15 +13,16 @@ create policy "Authenticated users can upload product images"
 create policy "Public can read product images"
   on storage.objects for select
   to public
-  with using (bucket_id = 'products');
+  using (bucket_id = 'products');
 
--- Allow authenticated users to update/delete their product images
+-- Allow authenticated users to update product images
 create policy "Authenticated users can update product images"
   on storage.objects for update
   to authenticated
-  with using (bucket_id = 'products');
+  using (bucket_id = 'products');
 
+-- Allow authenticated users to delete product images
 create policy "Authenticated users can delete product images"
   on storage.objects for delete
   to authenticated
-  with using (bucket_id = 'products');
+  using (bucket_id = 'products');
