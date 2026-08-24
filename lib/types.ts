@@ -21,6 +21,7 @@ export interface Product {
   remainingShots?: number;
   active: boolean;
   costPrice?: number;
+  imageUrl?: string;
 }
 
 export interface CartLine {

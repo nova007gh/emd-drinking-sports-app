@@ -43,7 +43,8 @@ export function mapProductFromDb(row: SupabaseRow): Product {
     remainingShots: row.open_bottle_shots_remaining as number,
     reorderLevel: row.reorder_level as number,
     active: row.active as boolean,
-    costPrice: row.cost_price_pesewas != null ? pesewasToGhanaCedis(row.cost_price_pesewas as number) : undefined
+    costPrice: row.cost_price_pesewas != null ? pesewasToGhanaCedis(row.cost_price_pesewas as number) : undefined,
+    imageUrl: (row.image_url as string) ?? undefined
   };
 }
 
@@ -57,7 +58,8 @@ export function mapProductToDb(product: Omit<Product, "id" | "active">): Supabas
     shots_per_bottle: product.shotsPerBottle ?? null,
     open_bottle_shots_remaining: product.remainingShots ?? 0,
     reorder_level: product.reorderLevel,
-    active: true
+    active: true,
+    image_url: product.imageUrl ?? null
   };
 }
 

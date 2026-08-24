@@ -678,6 +678,31 @@ const CATEGORY_FALLBACK: Record<ProductCategory, { body: string; body2: string; 
 };
 
 function ProductVisual({ product }: { product: Product }) {
+  // If product has a real image URL, show it with SVG fallback on error
+  if (product.imageUrl) {
+    return (
+      <>
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          className="product-image"
+          loading="lazy"
+          onError={(e) => {
+            // Hide broken image and show fallback SVG
+            const img = e.target as HTMLImageElement;
+            img.style.display = "none";
+            const fallback = img.nextElementSibling as HTMLElement | null;
+            if (fallback) fallback.style.display = "block";
+          }}
+        />
+        <div style={{ display: "none" }}><ProductSvg product={product} /></div>
+      </>
+    );
+  }
+  return <ProductSvg product={product} />;
+}
+
+function ProductSvg({ product }: { product: Product }) {
   const c = BRAND[product.name] ?? CATEGORY_FALLBACK[product.category];
   const id = product.id;
   const cat = product.category;
@@ -1391,7 +1416,7 @@ function Inventory() {
 
     <div className="responsive-table">
       <table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Shots left</th><th>Reorder</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>{products.map(p=><tr key={p.id}><td><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
+        <tbody>{products.map(p=><tr key={p.id}><td className="product-cell"><div className="product-cell-img">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="product-thumb" loading="lazy" onError={(e)=>{(e.target as HTMLImageElement).style.display='none';}}/> : <div className="product-thumb-svg"><ProductVisual product={p}/></div>}</div><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
     </div>
   </PageBox>;
 }

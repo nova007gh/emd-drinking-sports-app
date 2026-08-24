@@ -366,7 +366,11 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
           const lowStock = p.stock > 0 && p.stock <= 3;
           return (
             <div key={p.id} className="portal-menu-item">
-              <div className="portal-menu-item-icon">{categoryIcon(p.category)}</div>
+              <div className="portal-menu-item-icon">
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.name} className="portal-menu-item-img" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ) : categoryIcon(p.category)}
+              </div>
               <div className="portal-menu-item-info">
                 <strong>{p.name}</strong>
                 <small>{p.category}</small>
