@@ -125,9 +125,9 @@ language sql stable security definer set search_path = public
 as $$ select role from public.profiles where id = auth.uid() $$;
 
 -- Only owner/manager can transfer tables
-revoke execute on public.transfer_table from authenticated;
-grant execute on public.transfer_table to authenticated;
+revoke execute on function public.transfer_table(uuid, uuid) from authenticated;
+grant execute on function public.transfer_table(uuid, uuid) to authenticated;
 
 -- Only owner/manager/cashier can split bills
-revoke execute on public.split_bill from authenticated;
-grant execute on public.split_bill to authenticated;
+revoke execute on function public.split_bill(uuid, uuid[]) from authenticated;
+grant execute on function public.split_bill(uuid, uuid[]) to authenticated;

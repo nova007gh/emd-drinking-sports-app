@@ -76,14 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("name, role, avatar_url")
+            .select("full_name, role, avatar_url")
             .eq("id", session.user.id)
             .single();
           if (profile) {
             const authUser: AuthUser = {
               id: session.user.id,
               email: session.user.email ?? "",
-              name: profile.name,
+              name: (profile as { full_name: string }).full_name,
               role: profile.role as AppRole,
               avatarUrl: (profile as { avatar_url?: string }).avatar_url
             };
@@ -127,14 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("name, role, avatar_url")
+          .select("full_name, role, avatar_url")
           .eq("id", data.user.id)
           .single();
         if (profile) {
           const authUser: AuthUser = {
             id: data.user.id,
             email: data.user.email ?? "",
-            name: profile.name,
+            name: (profile as { full_name: string }).full_name,
             role: profile.role as AppRole,
             avatarUrl: (profile as { avatar_url?: string }).avatar_url
           };
