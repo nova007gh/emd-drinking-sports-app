@@ -6,7 +6,7 @@ import {
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
   Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
-  Banknote, Send
+  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper, Mic
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -17,7 +17,7 @@ import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import { buildReceipt, browserPrinter } from "@/lib/receipt";
 import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
-import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus } from "@/lib/types";
+import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory } from "@/lib/types";
 import type { Permission } from "@/lib/auth/roles";
 
 type Page =
@@ -64,7 +64,7 @@ const pagePermission: Partial<Record<Page, Permission>> = {
   "Wallets & Loyalty": "manage_customers",
   "Reports": "view_reports",
   "AI Assistant": "view_reports",
-  "Event Management": "manage_tables",
+  "Event Management": "manage_events",
   "Expenses": "manage_expenses",
   "Staff": "manage_staff",
   "Settings": "manage_settings",
@@ -95,6 +95,7 @@ function AppInner() {
   const products = useAppStore((s) => s.products);
   const customers = useAppStore((s) => s.customers);
   const matches = useAppStore((s) => s.matches);
+  const events = useAppStore((s) => s.events);
   const syncState = useSyncIntegration();
   const { canInstall, promptInstall } = useInstallPrompt();
 
@@ -107,8 +108,17 @@ function AppInner() {
     if (debtors.length > 0) items.push({ text: `${debtors.length} customer${debtors.length>1?"s":""} owe money`, page: "Debts", danger: true });
     if (heldOrders.length > 0) items.push({ text: `${heldOrders.length} held order${heldOrders.length>1?"s":""} waiting`, page: "POS / Sales", danger: false });
     if (syncState.pending > 0) items.push({ text: `${syncState.pending} operation${syncState.pending>1?"s":""} pending sync`, page: "Dashboard", danger: false });
+    // Event notifications
+    const now = Date.now();
+    const todayEvents = events.filter(e => e.active && new Date(e.startsAt).toDateString() === new Date().toDateString() && new Date(e.startsAt).getTime() > now);
+    if (todayEvents.length > 0) items.push({ text: `${todayEvents.length} event${todayEvents.length>1?"s":""} happening today!`, page: "Event Management", danger: false });
+    const upcomingEvents = events.filter(e => e.active && new Date(e.startsAt).getTime() > now && new Date(e.startsAt).getTime() < now + 86400000 * 3);
+    if (upcomingEvents.length > 0 && todayEvents.length === 0) items.push({ text: `${upcomingEvents.length} upcoming event${upcomingEvents.length>1?"s":""} in the next 3 days`, page: "Event Management", danger: false });
+    // Capacity warnings
+    const nearCapacity = events.filter(e => e.active && e.maxCapacity && (e.attendeeCount ?? 0) >= e.maxCapacity * 0.8);
+    if (nearCapacity.length > 0) items.push({ text: `${nearCapacity.length} event${nearCapacity.length>1?"s":""} nearing capacity`, page: "Event Management", danger: true });
     return items;
-  }, [products, customers, heldOrders, syncState.pending]);
+  }, [products, customers, heldOrders, syncState.pending, events]);
 
   useEffect(() => {
     if (user?.id) setCashierId(user.id);
@@ -1654,60 +1664,306 @@ function AIAssistant() {
 }
 
 function Football() {
-  const matches = useAppStore(s=>s.matches);
+  const events = useAppStore(s=>s.events);
   const tables = useAppStore(s=>s.tables);
-  const addMatch = useAppStore(s=>s.addMatch);
+  const addEvent = useAppStore(s=>s.addEvent);
+  const updateEvent = useAppStore(s=>s.updateEvent);
+  const deleteEvent = useAppStore(s=>s.deleteEvent);
+  const featureEvent = useAppStore(s=>s.featureEvent);
   const reserveTable = useAppStore(s=>s.reserveTableForMatch);
   const unreserveTable = useAppStore(s=>s.unreserveTableForMatch);
   const eventBookings = useAppStore(s=>s.eventBookings);
-  const [home,setHome]=useState(""); const [away,setAway]=useState(""); const [date,setDate]=useState("");
-  const [promo,setPromo]=useState("");
-  const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
-  const featured = matches.find(m=>m.featured && m.active);
+  const { can } = useAuth();
+
+  const [showForm, setShowForm] = useState(false);
+  const [filter, setFilter] = useState<EventCategory | "all">("all");
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<EventCategory>("sports");
+  const [home, setHome] = useState("");
+  const [away, setAway] = useState("");
+  const [hostName, setHostName] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [promo, setPromo] = useState("");
+  const [cover, setCover] = useState("");
+  const [capacity, setCapacity] = useState("");
+
+  const featured = events.find(e => e.featured && e.active);
+  const canManage = can("manage_events");
+
+  const categoryMeta: Record<EventCategory, { icon: React.ReactNode; label: string; color: string }> = {
+    sports: { icon: <Trophy size={18}/>, label: "Sports", color: "var(--yellow)" },
+    music: { icon: <Music size={18}/>, label: "Live Music", color: "#a78bfa" },
+    nightclub: { icon: <Moon size={18}/>, label: "Nightclub", color: "#f472b6" },
+    games: { icon: <Gamepad2 size={18}/>, label: "Games", color: "#60a5fa" },
+    other: { icon: <PartyPopper size={18}/>, label: "Special", color: "#34d399" },
+  };
+
+  const resetForm = () => {
+    setTitle(""); setCategory("sports"); setHome(""); setAway(""); setHostName("");
+    setStartsAt(""); setEndsAt(""); setPromo(""); setCover(""); setCapacity("");
+    setEditingId(null); setShowForm(false);
+  };
+
+  const startEdit = (e: BarEvent) => {
+    setEditingId(e.id);
+    setShowForm(true);
+    setTitle(e.title);
+    setCategory(e.category);
+    setHome(e.homeTeam ?? "");
+    setAway(e.awayTeam ?? "");
+    setHostName(e.hostName ?? "");
+    setStartsAt(e.startsAt.slice(0, 16));
+    setEndsAt(e.endsAt?.slice(0, 16) ?? "");
+    setPromo(e.promotionText ?? "");
+    setCover(e.coverChargePesewas ? String(e.coverChargePesewas / 100) : "");
+    setCapacity(e.maxCapacity ? String(e.maxCapacity) : "");
+  };
+
+  const handleSubmit = () => {
+    if (!title || !startsAt) return;
+    const eventData = {
+      title,
+      category,
+      homeTeam: category === "sports" ? home : undefined,
+      awayTeam: category === "sports" ? away : undefined,
+      hostName: hostName || undefined,
+      startsAt: new Date(startsAt).toISOString(),
+      endsAt: endsAt ? new Date(endsAt).toISOString() : undefined,
+      promotionText: promo || undefined,
+      coverChargePesewas: cover ? Math.round(Number(cover) * 100) : 0,
+      maxCapacity: capacity ? Number(capacity) : undefined,
+      reservedTables: [],
+    };
+    if (editingId) {
+      updateEvent(editingId, eventData);
+    } else {
+      addEvent(eventData);
+    }
+    resetForm();
+  };
+
+  const filteredEvents = events.filter(e => e.active && (filter === "all" || e.category === filter));
+  const sortedEvents = [...filteredEvents].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+  const upcomingCount = events.filter(e => e.active && new Date(e.startsAt).getTime() > Date.now()).length;
+  const totalBookings = eventBookings.length;
+  const totalCapacity = events.filter(e => e.active).reduce((sum, e) => sum + (e.maxCapacity ?? 0), 0);
+  const totalAttendees = events.filter(e => e.active).reduce((sum, e) => sum + (e.attendeeCount ?? 0), 0);
+
   return <PageBox title="Event Management" subtitle="Turn big events into bigger nights">
-    {featured && <div className="match-hero"><div><small>FEATURED MATCH</small><h2>{featured.homeTeam} <span>VS</span> {featured.awayTeam}</h2><p>{new Date(featured.startsAt).toLocaleString()} • {featured.promotionText ?? "Main screen • Table bookings available"}</p></div><Trophy/></div>}
-    <div className="inline-form"><input placeholder="Home team" value={home} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setHome(e.target.value)}/><input placeholder="Away team" value={away} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setAway(e.target.value)}/><input type="datetime-local" value={date} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDate(e.target.value)}/><input placeholder="Promotion text (optional)" value={promo} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setPromo(e.target.value)}/><button className="primary" onClick={()=>{if(home&&away&&date){addMatch(home,away,new Date(date).toISOString(),promo||undefined);setHome("");setAway("");setDate("");setPromo("")}}}><Plus/> Add match</button></div>
-    <div className="card-grid">{matches.filter(m=>m.active).map(m=>{
-      const reserved = m.reservedTables ?? [];
-      const reservedCount = reserved.length;
-      const matchBookings = eventBookings.filter(b => b.matchId === m.id);
-      return <article className="info-card" key={m.id}>
-        <Trophy/>
-        <h3>{m.homeTeam} vs {m.awayTeam}</h3>
-        <small>{new Date(m.startsAt).toLocaleString()}</small>
-        {m.promotionText && <p className="muted-text">{m.promotionText}</p>}
-        <div className="info-row"><span>Tables reserved</span><b className={reservedCount>0?"gold":""}>{reservedCount} / {tables.length}</b></div>
-        {matchBookings.length > 0 && (
-          <div className="event-bookings-list">
-            <small className="bookings-title">Customer bookings ({matchBookings.length}):</small>
-            {matchBookings.map(b => (
-              <div key={b.id} className="event-booking-row">
-                <span>{b.customerName}</span>
-                <small>{b.type === "attend" ? "Attending" : `Table ${b.tableId?.replace("t","")}`}</small>
+    {/* Stats */}
+    <div className="metric-grid" style={{marginBottom: "12px"}}>
+      <Metric label="UPCOMING EVENTS" value={String(upcomingCount)} sub="Scheduled" icon={<Calendar/>}/>
+      <Metric label="TOTAL BOOKINGS" value={String(totalBookings)} sub="Customer reservations" icon={<Users/>}/>
+      <Metric label="ATTENDEES" value={`${totalAttendees}/${totalCapacity || "∞"}`} sub="Across all events" icon={<PartyPopper/>}/>
+      <Metric label="CATEGORIES" value="5" sub="Sports, Music, Club, Games, Special" icon={<Star/>}/>
+    </div>
+
+    {/* Featured Event Hero */}
+    {featured && (
+      <div className="match-hero">
+        <div>
+          <small style={{color: categoryMeta[featured.category].color}}>{categoryMeta[featured.category].label.toUpperCase()} • FEATURED</small>
+          <h2>{featured.title}</h2>
+          <p>{new Date(featured.startsAt).toLocaleString()}
+            {featured.hostName && ` • ${featured.hostName}`}
+            {featured.coverChargePesewas ? ` • Cover: GHS ${(featured.coverChargePesewas / 100).toFixed(2)}` : " • Free entry"}
+          </p>
+          {featured.promotionText && <p className="muted-text">{featured.promotionText}</p>}
+        </div>
+        {categoryMeta[featured.category].icon}
+      </div>
+    )}
+
+    {/* Add/Edit Form */}
+    {canManage && (
+      <>
+        {!showForm ? (
+          <button className="primary" style={{marginBottom: "12px"}} onClick={() => setShowForm(true)}>
+            <Plus/> Add New Event
+          </button>
+        ) : (
+          <Panel title={editingId ? "Edit Event" : "Create New Event"} onClose={resetForm}>
+            <div className="event-form">
+              <div className="event-form-row">
+                <label className="auth-field">
+                  <span className="event-form-label">Event Title *</span>
+                  <input placeholder="e.g. Manchester United vs Arsenal" value={title} onChange={(e)=>setTitle(e.target.value)} autoFocus/>
+                </label>
+                <label className="auth-field">
+                  <span className="event-form-label">Category *</span>
+                  <select value={category} onChange={(e)=>setCategory(e.target.value as EventCategory)}>
+                    <option value="sports">🏆 Sports (Football, Boxing, etc.)</option>
+                    <option value="music">🎵 Live Music (Bands, DJs, Concerts)</option>
+                    <option value="nightclub">🌙 Nightclub / Party</option>
+                    <option value="games">🎮 Games (FIFA, Trivia, etc.)</option>
+                    <option value="other">🎉 Special Event (Karaoke, Comedy, etc.)</option>
+                  </select>
+                </label>
               </div>
-            ))}
-          </div>
+
+              {category === "sports" && (
+                <div className="event-form-row">
+                  <label className="auth-field">
+                    <span className="event-form-label">Home Team</span>
+                    <input placeholder="e.g. Manchester United" value={home} onChange={(e)=>setHome(e.target.value)}/>
+                  </label>
+                  <label className="auth-field">
+                    <span className="event-form-label">Away Team</span>
+                    <input placeholder="e.g. Arsenal" value={away} onChange={(e)=>setAway(e.target.value)}/>
+                  </label>
+                </div>
+              )}
+
+              {category !== "sports" && (
+                <label className="auth-field" style={{marginBottom: "10px"}}>
+                  <span className="event-form-label">{category === "nightclub" ? "DJ / Host Name" : category === "music" ? "Artist / Band Name" : "Host / MC Name"}</span>
+                  <input placeholder="e.g. DJ Blacko" value={hostName} onChange={(e)=>setHostName(e.target.value)}/>
+                </label>
+              )}
+
+              <div className="event-form-row">
+                <label className="auth-field">
+                  <span className="event-form-label">Start Date & Time *</span>
+                  <input type="datetime-local" value={startsAt} onChange={(e)=>setStartsAt(e.target.value)}/>
+                </label>
+                <label className="auth-field">
+                  <span className="event-form-label">End Date & Time</span>
+                  <input type="datetime-local" value={endsAt} onChange={(e)=>setEndsAt(e.target.value)}/>
+                </label>
+              </div>
+
+              <div className="event-form-row">
+                <label className="auth-field">
+                  <span className="event-form-label">Cover Charge (GHS)</span>
+                  <input type="number" placeholder="0 = Free" value={cover} onChange={(e)=>setCover(e.target.value)}/>
+                </label>
+                <label className="auth-field">
+                  <span className="event-form-label">Max Capacity</span>
+                  <input type="number" placeholder="e.g. 80" value={capacity} onChange={(e)=>setCapacity(e.target.value)}/>
+                </label>
+              </div>
+
+              <label className="auth-field" style={{marginBottom: "10px"}}>
+                <span className="event-form-label">Promotion Text</span>
+                <input placeholder="e.g. Big match tonight — live on the big screen" value={promo} onChange={(e)=>setPromo(e.target.value)}/>
+              </label>
+
+              <div className="event-form-actions">
+                <button className="primary" onClick={handleSubmit} disabled={!title || !startsAt}>
+                  {editingId ? "Update Event" : "Create Event"}
+                </button>
+                <button className="mini" onClick={resetForm}>Cancel</button>
+              </div>
+            </div>
+          </Panel>
         )}
-        <button className="mini" style={{marginTop:8,width:"100%"}} onClick={()=>setExpandedMatch(expandedMatch===m.id?null:m.id)}>
-          {expandedMatch===m.id ? "Hide tables" : "Manage table reservations"}
+      </>
+    )}
+
+    {/* Category Filters */}
+    <div className="event-filters">
+      <button className={`event-filter-chip ${filter === "all" ? "active" : ""}`} onClick={()=>setFilter("all")}>
+        All ({events.filter(e=>e.active).length})
+      </button>
+      {(Object.keys(categoryMeta) as EventCategory[]).map(cat => (
+        <button key={cat} className={`event-filter-chip ${filter === cat ? "active" : ""}`} onClick={()=>setFilter(cat)} style={filter === cat ? {borderColor: categoryMeta[cat].color, color: categoryMeta[cat].color} : {}}>
+          {categoryMeta[cat].icon} {categoryMeta[cat].label} ({events.filter(e=>e.active && e.category===cat).length})
         </button>
-        {expandedMatch===m.id && (
-          <div className="match-table-reservations">
-            {tables.map(t=>{
-              const isReserved = reserved.includes(t.id);
-              return <div key={t.id} className={`reservation-row ${isReserved?"reserved":""}`}>
-                <span>{t.name}</span>
-                <small>{t.occupied?"(occupied)":"(available)"}</small>
-                <button className="mini" onClick={()=>{
-                  if (isReserved) unreserveTable(m.id, t.id);
-                  else reserveTable(m.id, t.id);
-                }}>{isReserved?"Unreserve":"Reserve"}</button>
-              </div>;
-            })}
+      ))}
+    </div>
+
+    {/* Event Cards */}
+    <div className="card-grid">
+      {sortedEvents.map(e => {
+        const reserved = e.reservedTables ?? [];
+        const reservedCount = reserved.length;
+        const matchBookings = eventBookings.filter(b => b.matchId === e.id);
+        const meta = categoryMeta[e.category];
+        const isUpcoming = new Date(e.startsAt).getTime() > Date.now();
+        const isToday = new Date(e.startsAt).toDateString() === new Date().toDateString();
+        return <article className="info-card event-card" key={e.id}>
+          <div className="event-card-header" style={{borderColor: meta.color}}>
+            <div className="event-card-icon" style={{color: meta.color}}>{meta.icon}</div>
+            <div className="event-card-info">
+              <h3>{e.title}</h3>
+              <small style={{color: meta.color}}>{meta.label}</small>
+            </div>
+            {isToday && <span className="event-badge event-badge-today">TODAY</span>}
+            {!isUpcoming && !isToday && <span className="event-badge event-badge-past">PAST</span>}
           </div>
-        )}
-      </article>;
-    })}</div>
+
+          <small>{new Date(e.startsAt).toLocaleString()}{e.endsAt ? ` → ${new Date(e.endsAt).toLocaleTimeString()}` : ""}</small>
+
+          {e.hostName && <p className="muted-text">👤 {e.hostName}</p>}
+          {e.promotionText && <p className="muted-text">{e.promotionText}</p>}
+
+          <div className="event-card-meta">
+            {e.coverChargePesewas ? (
+              <span className="event-meta-pill">Cover: GHS {(e.coverChargePesewas / 100).toFixed(2)}</span>
+            ) : (
+              <span className="event-meta-pill event-meta-free">Free Entry</span>
+            )}
+            {e.maxCapacity && (
+              <span className="event-meta-pill">{e.attendeeCount ?? 0}/{e.maxCapacity} attending</span>
+            )}
+            <span className="event-meta-pill">{reservedCount}/{tables.length} tables</span>
+          </div>
+
+          {matchBookings.length > 0 && (
+            <div className="event-bookings-list">
+              <small className="bookings-title">Customer bookings ({matchBookings.length}):</small>
+              {matchBookings.map(b => (
+                <div key={b.id} className="event-booking-row">
+                  <span>{b.customerName}</span>
+                  <small>{b.type === "attend" ? "Attending" : `Table ${b.tableId?.replace("t","")}`}</small>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {canManage && (
+            <div className="event-card-actions">
+              <button className="mini" onClick={()=>setExpandedEvent(expandedEvent===e.id?null:e.id)}>
+                {expandedEvent===e.id ? "Hide tables" : "Manage tables"}
+              </button>
+              <button className="mini" onClick={()=>featureEvent(e.id)} disabled={e.featured}>
+                <Star size={12}/> {e.featured ? "Featured" : "Feature"}
+              </button>
+              <button className="mini" onClick={()=>startEdit(e)}><Pencil size={12}/> Edit</button>
+              <button className="mini danger-btn" onClick={()=>{ if(confirm("Delete this event?")) deleteEvent(e.id); }}><Trash2 size={12}/> Delete</button>
+            </div>
+          )}
+
+          {expandedEvent===e.id && (
+            <div className="match-table-reservations">
+              {tables.map(t=>{
+                const isReserved = reserved.includes(t.id);
+                return <div key={t.id} className={`reservation-row ${isReserved?"reserved":""}`}>
+                  <span>{t.name}</span>
+                  <small>{t.occupied?"(occupied)":"(available)"}</small>
+                  <button className="mini" onClick={()=>{
+                    if (isReserved) unreserveTable(e.id, t.id);
+                    else reserveTable(e.id, t.id);
+                  }}>{isReserved?"Unreserve":"Reserve"}</button>
+                </div>;
+              })}
+            </div>
+          )}
+        </article>;
+      })}
+    </div>
+
+    {sortedEvents.length === 0 && (
+      <Panel title="No events">
+        <p className="muted-text">No {filter !== "all" ? categoryMeta[filter as EventCategory].label.toLowerCase() : ""} events scheduled. {canManage && "Click \"Add New Event\" to create one."}</p>
+      </Panel>
+    )}
   </PageBox>;
 }
 
@@ -1768,8 +2024,8 @@ function Metric({label,value,sub,icon,danger=false,trend,onSubClick}:{label:stri
     <div className="metric-icon">{icon}</div>
   </article>;
 }
-function Panel({title,children,className="",action}:{title:string;children:React.ReactNode;className?:string;action?:React.ReactNode}) {
-  return <section className={`panel ${className}`}><div className="panel-head"><h3>{title}</h3>{action}</div>{children}</section>;
+function Panel({title,children,className="",action,onClose}:{title:string;children:React.ReactNode;className?:string;action?:React.ReactNode;onClose?:()=>void}) {
+  return <section className={`panel ${className}`}><div className="panel-head"><h3>{title}</h3>{onClose ? <button className="icon-btn" onClick={onClose}><X size={16}/></button> : action}</div>{children}</section>;
 }
 function InsightCard({icon,label,value,sub,footer,tone="gold",onClick}:{icon:React.ReactNode;label:string;value:string;sub?:string;footer?:string;tone?:"gold"|"red"|"green"|"blue";onClick?:()=>void}) {
   return <article className={`insight-card tone-${tone} ${onClick?"clickable":""}`} onClick={onClick}>

@@ -187,40 +187,56 @@ function PortalHome({ barOpen, onTab }: { barOpen: boolean; onTab: (t: PortalTab
 }
 
 function PortalEvents({ customerId, customerName }: { customerId: string; customerName: string }) {
-  const matches = useAppStore(s => s.matches);
+  const events = useAppStore(s => s.events);
   const tables = useAppStore(s => s.tables);
   const bookEvent = useAppStore(s => s.bookEvent);
   const eventBookings = useAppStore(s => s.eventBookings);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const categoryLabels: Record<string, string> = {
+    sports: "🏆 Sports",
+    music: "🎵 Live Music",
+    nightclub: "🌙 Nightclub",
+    games: "🎮 Games",
+    other: "🎉 Special Event",
+  };
+
+  const sortedEvents = [...events].filter(e => e.active).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
   return (
     <div className="portal-section">
       <h2 className="portal-title">Upcoming Events</h2>
       <p className="portal-subtitle">Book your spot at the next big event</p>
 
-      {matches.filter(m => m.active).map(m => {
-        const reserved = m.reservedTables ?? [];
-        const myBooking = eventBookings.find(b => b.matchId === m.id && b.customerId === customerId);
-        const isExpanded = expandedId === m.id;
+      {sortedEvents.map(e => {
+        const reserved = e.reservedTables ?? [];
+        const myBooking = eventBookings.find(b => b.matchId === e.id && b.customerId === customerId);
+        const isExpanded = expandedId === e.id;
 
         return (
-          <div key={m.id} className="portal-event-card">
+          <div key={e.id} className="portal-event-card">
             <div className="portal-event-card-header">
-              <div className="portal-event-badge">{m.featured ? "FEATURED" : "EVENT"}</div>
+              <div className="portal-event-badge">{e.featured ? "FEATURED" : categoryLabels[e.category] ?? "EVENT"}</div>
               <div className="portal-event-date">
                 <Calendar size={14} />
-                {new Date(m.startsAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                {new Date(e.startsAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </div>
             </div>
-            <h3>{m.homeTeam} vs {m.awayTeam}</h3>
+            <h3>{e.title}</h3>
+            {e.hostName && <p className="portal-event-host">👤 {e.hostName}</p>}
             <div className="portal-event-time">
               <Clock size={14} />
-              {new Date(m.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {new Date(e.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
-            {m.promotionText && <p className="portal-event-promo">{m.promotionText}</p>}
+            {e.promotionText && <p className="portal-event-promo">{e.promotionText}</p>}
             <div className="portal-event-stats">
-              <div><Users size={14} /> {reserved.length}/{tables.length} tables reserved</div>
-              <div><MapPin size={14} /> {tables.length - reserved.length} available</div>
+              {e.coverChargePesewas ? (
+                <div>💰 Cover: GHS {(e.coverChargePesewas / 100).toFixed(2)}</div>
+              ) : (
+                <div>✅ Free Entry</div>
+              )}
+              <div><Users size={14} /> {e.attendeeCount ?? 0}{e.maxCapacity ? `/${e.maxCapacity}` : ""} attending</div>
+              <div><MapPin size={14} /> {reserved.length}/{tables.length} tables</div>
             </div>
 
             {myBooking && (
@@ -232,10 +248,10 @@ function PortalEvents({ customerId, customerName }: { customerId: string; custom
 
             {!myBooking && (
               <div className="portal-event-actions">
-                <button className="portal-btn-primary" onClick={() => bookEvent(m.id, customerId, customerName, "attend")}>
+                <button className="portal-btn-primary" onClick={() => bookEvent(e.id, customerId, customerName, "attend")}>
                   <CheckCircle2 size={16} /> Attend
                 </button>
-                <button className="portal-btn-secondary" onClick={() => setExpandedId(isExpanded ? null : m.id)}>
+                <button className="portal-btn-secondary" onClick={() => setExpandedId(isExpanded ? null : e.id)}>
                   <MapPin size={16} /> Reserve Table
                 </button>
               </div>
@@ -252,7 +268,7 @@ function PortalEvents({ customerId, customerName }: { customerId: string; custom
                         key={t.id}
                         className={`portal-table-pick ${isReserved ? "taken" : ""}`}
                         disabled={isReserved}
-                        onClick={() => { bookEvent(m.id, customerId, customerName, "reserve", t.id); setExpandedId(null); }}
+                        onClick={() => { bookEvent(e.id, customerId, customerName, "reserve", t.id); setExpandedId(null); }}
                       >
                         {t.name}
                         {isReserved ? <small>Reserved</small> : <small>Available</small>}

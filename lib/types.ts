@@ -137,16 +137,34 @@ export interface StaffMember {
   ordersHandled: number;
 }
 
-export interface Match {
+export type EventCategory = "sports" | "music" | "nightclub" | "games" | "other";
+
+export interface BarEvent {
   id: string;
-  homeTeam: string;
-  awayTeam: string;
+  title: string;
+  category: EventCategory;
+  /** For sports: home team. For other events: primary artist/team/act */
+  homeTeam?: string;
+  /** For sports: away team. For other events: supporting act or opponent */
+  awayTeam?: string;
   startsAt: string;
+  endsAt?: string;
   promotionText?: string;
   featured: boolean;
   active: boolean;
   reservedTables?: string[];
+  /** Cover charge in pesewas (0 = free) */
+  coverChargePesewas?: number;
+  /** DJ, performer, or host name */
+  hostName?: string;
+  /** Max capacity for attendees (excluding table reservations) */
+  maxCapacity?: number;
+  /** Count of attendees (tracked via bookings) */
+  attendeeCount?: number;
 }
+
+/** @deprecated Use BarEvent instead — kept for backwards compatibility */
+export type Match = BarEvent;
 
 export interface HeldOrder {
   id: string;
@@ -214,7 +232,8 @@ export interface ChatMessage {
 
 export interface EventBooking {
   id: string;
-  matchId: string;
+  matchId: string; // kept for backwards compat — same as eventId
+  eventId?: string;
   customerId: string;
   customerName: string;
   tableId?: string;

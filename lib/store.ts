@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, EventCategory, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
 const PERSIST_KEY = "emd-drinking-sports-v4";
 
@@ -15,7 +15,7 @@ const PERSIST_KEY = "emd-drinking-sports-v4";
  * so everyone picks up the new catalogue; a match keeps the operator's real work
  * (sales, stock levels, customers, open tables) intact across refreshes.
  */
-const SEED_VERSION = 5;
+const SEED_VERSION = 6;
 
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {
@@ -38,7 +38,8 @@ interface AppState {
   heldOrders: HeldOrder[];
   debts: Debt[];
   staff: StaffMember[];
-  matches: Match[];
+  matches: Match[]; // kept for backwards compat — same as events
+  events: BarEvent[];
   stockMovements: StockMovement[];
   currentRole: "owner" | "manager" | "cashier" | "waiter";
   currentCashierId: string;
@@ -74,6 +75,10 @@ interface AppState {
   selectGiftCardCode: (code?: string) => void;
   voidSale: (saleId: string) => void;
   addMatch: (home: string, away: string, startsAt: string, promotion?: string) => void;
+  addEvent: (event: Omit<BarEvent, "id" | "active" | "featured">) => void;
+  updateEvent: (id: string, updates: Partial<BarEvent>) => void;
+  deleteEvent: (id: string) => void;
+  featureEvent: (id: string) => void;
   reserveTableForMatch: (matchId: string, tableId: string) => void;
   unreserveTableForMatch: (matchId: string, tableId: string) => void;
   topUpWallet: (customerId: string, amount: number) => void;
@@ -93,6 +98,9 @@ interface AppState {
   sendChatMessage: (tableId: string, sender: "customer" | "waiter", text: string, customerId?: string, waiterId?: string) => void;
   eventBookings: EventBooking[];
   bookEvent: (matchId: string, customerId: string, customerName: string, type: "attend" | "reserve", tableId?: string) => void;
+  /** Notifications for upcoming events */
+  eventNotifications: Array<{ id: string; text: string; eventId: string; severity: "info" | "warning" }>;
+  dismissEventNotification: (id: string) => void;
 }
 
 const totalOf = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -147,6 +155,7 @@ export const useAppStore = create<AppState>()(
       debts: debtsSeed,
       staff: staffSeed,
       matches: matchesSeed,
+      events: matchesSeed,
       stockMovements: [],
       currentRole: "owner",
       currentCashierId: "demo-owner",
@@ -158,6 +167,7 @@ export const useAppStore = create<AppState>()(
       waiterCalls: [],
       chatMessages: [],
       eventBookings: [],
+      eventNotifications: [],
 
       addToCart: (productId, mode) => {
         const product = get().products.find((p) => p.id === productId);
@@ -551,9 +561,11 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      addMatch: (home, away, startsAt, promotion) => set((state) => ({
-        matches: [...state.matches, {
+      addMatch: (home, away, startsAt, promotion) => set((state) => {
+        const newEvent: BarEvent = {
           id: crypto.randomUUID(),
+          title: `${home} vs ${away}`,
+          category: "sports",
           homeTeam: home,
           awayTeam: away,
           startsAt,
@@ -561,10 +573,48 @@ export const useAppStore = create<AppState>()(
           featured: false,
           active: true,
           reservedTables: []
-        }]
+        };
+        return {
+          matches: [...state.matches, newEvent],
+          events: [...state.events, newEvent]
+        };
+      }),
+
+      addEvent: (event) => set((state) => {
+        const newEvent: BarEvent = {
+          ...event,
+          id: crypto.randomUUID(),
+          featured: false,
+          active: true
+        };
+        return {
+          events: [...state.events, newEvent],
+          matches: [...state.matches, newEvent]
+        };
+      }),
+
+      updateEvent: (id, updates) => set((state) => ({
+        events: state.events.map(e => e.id === id ? { ...e, ...updates } : e),
+        matches: state.matches.map(m => m.id === id ? { ...m, ...updates } : m),
+      })),
+
+      deleteEvent: (id) => set((state) => ({
+        events: state.events.filter(e => e.id !== id),
+        matches: state.matches.filter(m => m.id !== id),
+      })),
+
+      featureEvent: (id) => set((state) => ({
+        events: state.events.map(e => ({ ...e, featured: e.id === id })),
+        matches: state.matches.map(m => ({ ...m, featured: m.id === id })),
       })),
 
       reserveTableForMatch: (matchId, tableId) => set((state) => ({
+        events: state.events.map(e => {
+          if (e.id !== matchId) return e;
+          const reserved = e.reservedTables ?? [];
+          if (reserved.includes(tableId)) return e;
+          return { ...e, reservedTables: [...reserved, tableId] };
+        }),
         matches: state.matches.map(m => {
           if (m.id !== matchId) return m;
           const reserved = m.reservedTables ?? [];
@@ -574,6 +624,10 @@ export const useAppStore = create<AppState>()(
       })),
 
       unreserveTableForMatch: (matchId, tableId) => set((state) => ({
+        events: state.events.map(e => {
+          if (e.id !== matchId) return e;
+          return { ...e, reservedTables: (e.reservedTables ?? []).filter(t => t !== tableId) };
+        }),
         matches: state.matches.map(m => {
           if (m.id !== matchId) return m;
           return { ...m, reservedTables: (m.reservedTables ?? []).filter(t => t !== tableId) };
@@ -748,12 +802,24 @@ export const useAppStore = create<AppState>()(
 
       bookEvent: (matchId, customerId, customerName, type, tableId) => {
         const id = `eb${Date.now()}`;
-        const booking: EventBooking = { id, matchId, customerId, customerName, tableId, type, createdAt: new Date().toISOString() };
-        set((s) => ({ eventBookings: [...s.eventBookings, booking] }));
+        const booking: EventBooking = { id, matchId, eventId: matchId, customerId, customerName, tableId, type, createdAt: new Date().toISOString() };
+        set((s) => ({
+          eventBookings: [...s.eventBookings, booking],
+          events: type === "attend"
+            ? s.events.map(e => e.id === matchId ? { ...e, attendeeCount: (e.attendeeCount ?? 0) + 1 } : e)
+            : s.events,
+        }));
         if (type === "reserve" && tableId) {
-          set((s) => ({ matches: s.matches.map((m) => m.id === matchId ? { ...m, reservedTables: [...(m.reservedTables ?? []), tableId] } : m) }));
+          set((s) => ({
+            matches: s.matches.map((m) => m.id === matchId ? { ...m, reservedTables: [...(m.reservedTables ?? []), tableId] } : m),
+            events: s.events.map((e) => e.id === matchId ? { ...e, reservedTables: [...(e.reservedTables ?? []), tableId] } : e),
+          }));
         }
-      }
+      },
+
+      dismissEventNotification: (id) => set((state) => ({
+        eventNotifications: state.eventNotifications.filter(n => n.id !== id),
+      })),
     }),
     {
       name: PERSIST_KEY,

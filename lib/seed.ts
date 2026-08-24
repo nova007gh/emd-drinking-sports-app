@@ -1,4 +1,4 @@
-import type { BarTable, Customer, GiftCard, Product, SaleRecord, StaffMember, Match, Expense, Debt } from "./types";
+import type { BarTable, Customer, GiftCard, Product, SaleRecord, StaffMember, BarEvent, Expense, Debt } from "./types";
 
 export const productsSeed: Product[] = [
   // Beer
@@ -127,11 +127,20 @@ export const staffSeed: StaffMember[] = [
   { id: "u4", name: "Kojo", role: "waiter", active: true, phone: "0240000030", salesCount: 67, ordersHandled: 41 }
 ];
 
-export const matchesSeed: Match[] = [
-  { id: "m1", homeTeam: "Manchester United", awayTeam: "Arsenal", startsAt: new Date(Date.now() + 28800000).toISOString(), promotionText: "Big match tonight", featured: true, active: true },
-  { id: "m2", homeTeam: "Chelsea", awayTeam: "Liverpool", startsAt: new Date(Date.now() + 86400000).toISOString(), active: true, featured: false },
-  { id: "m3", homeTeam: "Barcelona", awayTeam: "Real Madrid", startsAt: new Date(Date.now() + 172800000).toISOString(), active: true, featured: false },
-  { id: "m4", homeTeam: "PSG", awayTeam: "Marseille", startsAt: new Date(Date.now() + 259200000).toISOString(), active: true, featured: false }
+export const matchesSeed: BarEvent[] = [
+  // Sports
+  { id: "m1", title: "Manchester United vs Arsenal", category: "sports", homeTeam: "Manchester United", awayTeam: "Arsenal", startsAt: new Date(Date.now() + 28800000).toISOString(), promotionText: "Big match tonight — live on the big screen", featured: true, active: true, reservedTables: [] },
+  { id: "m2", title: "Chelsea vs Liverpool", category: "sports", homeTeam: "Chelsea", awayTeam: "Liverpool", startsAt: new Date(Date.now() + 86400000).toISOString(), active: true, featured: false, reservedTables: [] },
+  { id: "m3", title: "Barcelona vs Real Madrid", category: "sports", homeTeam: "Barcelona", awayTeam: "Real Madrid", startsAt: new Date(Date.now() + 172800000).toISOString(), active: true, featured: false, reservedTables: [] },
+  // Music
+  { id: "m5", title: "Live Afrobeats Night", category: "music", hostName: "DJ Blacko", startsAt: new Date(Date.now() + 432000000).toISOString(), endsAt: new Date(Date.now() + 433800000).toISOString(), promotionText: "Live performance featuring top Afrobeats hits", active: true, featured: false, reservedTables: [], coverChargePesewas: 5000, maxCapacity: 80 },
+  { id: "m6", title: "Highlife Friday", category: "music", hostName: "The Amponsah Band", startsAt: new Date(Date.now() + 604800000).toISOString(), endsAt: new Date(Date.now() + 606600000).toISOString(), promotionText: "Classic highlife tunes all night", active: true, featured: false, reservedTables: [], coverChargePesewas: 3000, maxCapacity: 60 },
+  // Nightclub
+  { id: "m7", title: "Saturday Night Party", category: "nightclub", hostName: "DJ Spinall", startsAt: new Date(Date.now() + 259200000).toISOString(), endsAt: new Date(Date.now() + 262800000).toISOString(), promotionText: "The hottest party in town — bottle service available", active: true, featured: false, reservedTables: [], coverChargePesewas: 10000, maxCapacity: 120 },
+  // Games
+  { id: "m8", title: "FIFA Tournament Night", category: "games", hostName: "EMD Gaming", startsAt: new Date(Date.now() + 345600000).toISOString(), endsAt: new Date(Date.now() + 347400000).toISOString(), promotionText: "Sign up for the FIFA tournament — prizes for winners", active: true, featured: false, reservedTables: [], coverChargePesewas: 2000, maxCapacity: 32 },
+  // Other
+  { id: "m9", title: "Karaoke Wednesday", category: "other", hostName: "MC Kwame", startsAt: new Date(Date.now() + 518400000).toISOString(), endsAt: new Date(Date.now() + 520200000).toISOString(), promotionText: "Sing your heart out — drinks specials all night", active: true, featured: false, reservedTables: [], coverChargePesewas: 0, maxCapacity: 50 },
 ];
 
 export const debtsSeed: Debt[] = [

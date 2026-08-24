@@ -159,8 +159,10 @@ export function mapStaffFromDb(row: SupabaseRow): StaffMember {
 export function mapMatchFromDb(row: SupabaseRow): Match {
   return {
     id: row.id as string,
-    homeTeam: row.home_team as string,
-    awayTeam: row.away_team as string,
+    title: (row.title as string) ?? `${row.home_team ?? ""} vs ${row.away_team ?? ""}`,
+    category: (row.category as string ?? "sports") as Match["category"],
+    homeTeam: row.home_team as string | undefined,
+    awayTeam: row.away_team as string | undefined,
     startsAt: row.starts_at as string,
     promotionText: row.promotion_text as string | undefined,
     featured: (row.featured as boolean) ?? false,
