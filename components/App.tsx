@@ -1354,26 +1354,12 @@ function Inventory() {
   const adjustStock = useAppStore(s=>s.adjustStock);
   const toggleProductActive = useAppStore(s=>s.toggleProductActive);
   const addProduct = useAppStore(s=>s.addProduct);
+  const updateProduct = useAppStore(s=>s.updateProduct);
   const stockMovements = useAppStore(s=>s.stockMovements);
-  const { can } = useAuth();
-  const [showAdd, setShowAdd] = useState(false);
+  const { can, isDemoMode } = useAuth();
   const [showMovements, setShowMovements] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newCategory, setNewCategory] = useState<ProductCategory>("Beer");
-  const [newPrice, setNewPrice] = useState("");
-  const [newReorder, setNewReorder] = useState("10");
-
-  const handleAddProduct = () => {
-    if (!newName || !newPrice) return;
-    addProduct({
-      name: newName,
-      category: newCategory,
-      bottlePrice: Number(newPrice),
-      stock: 0,
-      reorderLevel: Number(newReorder)
-    });
-    setNewName(""); setNewPrice(""); setShowAdd(false);
-  };
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const totalProducts = products.length;
   const lowStockCount = products.filter(p => p.stock <= p.reorderLevel && p.active).length;
@@ -1390,21 +1376,9 @@ function Inventory() {
     </div>
 
     <div className="inline-form">
-      {can("manage_inventory") && <button className="primary" onClick={() => setShowAdd(!showAdd)}><Plus/> Add product</button>}
+      {can("manage_inventory") && <button className="primary" onClick={() => { setEditingProduct(null); setShowForm(true); }}><Plus/> Add product</button>}
       <button className="secondary" onClick={() => setShowMovements(!showMovements)}><Package/> Movement history</button>
     </div>
-
-    {showAdd && can("manage_inventory") && (
-      <div className="add-product-form">
-        <input placeholder="Product name" value={newName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewName(e.target.value)}/>
-        <select value={newCategory} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setNewCategory(e.target.value as ProductCategory)}>
-          {(["Beer","Spirits","Wine","Soft Drinks","Energy Drinks","Cigarettes","Snacks","Juice","Water"] as ProductCategory[]).map(c=><option key={c} value={c}>{c}</option>)}
-        </select>
-        <input type="number" placeholder="Bottle price" value={newPrice} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewPrice(e.target.value)}/>
-        <input type="number" placeholder="Reorder level" value={newReorder} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewReorder(e.target.value)}/>
-        <button className="primary" onClick={handleAddProduct}>Save</button>
-      </div>
-    )}
 
     {showMovements && (
       <div className="responsive-table" style={{marginBottom:"14px"}}>
@@ -1416,9 +1390,178 @@ function Inventory() {
 
     <div className="responsive-table">
       <table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Shots left</th><th>Reorder</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>{products.map(p=><tr key={p.id}><td className="product-cell"><div className="product-cell-img">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="product-thumb" loading="lazy" onError={(e)=>{(e.target as HTMLImageElement).style.display='none';}}/> : <div className="product-thumb-svg"><ProductVisual product={p}/></div>}</div><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
+        <tbody>{products.map(p=><tr key={p.id}><td className="product-cell"><div className="product-cell-img">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="product-thumb" loading="lazy" onError={(e)=>{(e.target as HTMLImageElement).style.display='none';}}/> : <div className="product-thumb-svg"><ProductVisual product={p}/></div>}</div><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>{ setEditingProduct(p); setShowForm(true); }}><Pencil size={12}/> Edit</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
     </div>
+
+    {showForm && can("manage_inventory") && (
+      <ProductFormModal
+        product={editingProduct}
+        isDemoMode={isDemoMode}
+        onClose={() => { setShowForm(false); setEditingProduct(null); }}
+        onSave={(data) => {
+          if (editingProduct) {
+            updateProduct(editingProduct.id, data);
+          } else {
+            addProduct(data);
+          }
+          setShowForm(false);
+          setEditingProduct(null);
+        }}
+      />
+    )}
   </PageBox>;
+}
+
+const PRODUCT_CATEGORIES: ProductCategory[] = ["Beer","Spirits","Wine","Soft Drinks","Energy Drinks","Cigarettes","Snacks","Juice","Water"];
+const SHOT_CATEGORIES: ProductCategory[] = ["Spirits","Wine"];
+
+function ProductFormModal({ product, isDemoMode, onClose, onSave }: {
+  product: Product | null;
+  isDemoMode: boolean;
+  onClose: () => void;
+  onSave: (data: Omit<Product, "id" | "active">) => void;
+}) {
+  const isEdit = !!product;
+  const [name, setName] = useState(product?.name ?? "");
+  const [category, setCategory] = useState<ProductCategory>(product?.category ?? "Beer");
+  const [bottlePrice, setBottlePrice] = useState(String(product?.bottlePrice ?? ""));
+  const [shotPrice, setShotPrice] = useState(product?.shotPrice != null ? String(product.shotPrice) : "");
+  const [costPrice, setCostPrice] = useState(product?.costPrice != null ? String(product.costPrice) : "");
+  const [stock, setStock] = useState(String(product?.stock ?? 0));
+  const [reorderLevel, setReorderLevel] = useState(String(product?.reorderLevel ?? 10));
+  const [shotsPerBottle, setShotsPerBottle] = useState(product?.shotsPerBottle != null ? String(product.shotsPerBottle) : "");
+  const [remainingShots, setRemainingShots] = useState(product?.remainingShots != null ? String(product.remainingShots) : "");
+  const [imageUrl, setImageUrl] = useState<string | undefined>(product?.imageUrl);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const hasShots = SHOT_CATEGORIES.includes(category);
+  const previewSrc = imageUrl;
+
+  const handleImageSelect = async (file: File) => {
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) { setUploadError("Please select an image file"); return; }
+    if (file.size > 2 * 1024 * 1024) { setUploadError("Image must be under 2MB"); return; }
+
+    if (isDemoMode) {
+      // Demo mode: convert to data URL stored in zustand
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setImageUrl(dataUrl);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Production mode: upload to Supabase storage
+    setUploading(true);
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("products").upload(path, file, { upsert: false });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(path);
+      setImageUrl(publicUrl);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    if (!bottlePrice || Number(bottlePrice) <= 0) return;
+    const data: Omit<Product, "id" | "active"> = {
+      name: name.trim(),
+      category,
+      bottlePrice: Number(bottlePrice),
+      stock: Number(stock) || 0,
+      reorderLevel: Number(reorderLevel) || 0,
+      imageUrl,
+    };
+    if (costPrice && Number(costPrice) > 0) data.costPrice = Number(costPrice);
+    if (hasShots) {
+      if (shotPrice && Number(shotPrice) > 0) data.shotPrice = Number(shotPrice);
+      if (shotsPerBottle) {
+        data.shotsPerBottle = Number(shotsPerBottle);
+        data.remainingShots = Number(remainingShots) || 0;
+      }
+    }
+    onSave(data);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card product-form-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
+        <h2>{isEdit ? "Edit Product" : "Add Product"}</h2>
+        <p className="modal-subtitle">{isEdit ? "Update product details" : "Create a new product for your inventory"}</p>
+
+        <div className="product-form-grid">
+          <div className="product-form-image">
+            <div className="product-form-preview">
+              {previewSrc ? (
+                <img src={previewSrc} alt="Preview" className="product-form-preview-img" />
+              ) : (
+                <div className="product-form-preview-svg">
+                  <ProductVisual product={{ id: "preview", name, category, bottlePrice: Number(bottlePrice) || 0, stock: 0, reorderLevel: 0, active: true } as Product} />
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(f); }}
+            />
+            <button type="button" className="btn-secondary product-form-upload-btn" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+              {uploading ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
+              {uploading ? "Uploading..." : "Upload image"}
+            </button>
+            {imageUrl && (
+              <button type="button" className="btn-secondary product-form-clear-btn" onClick={() => { setImageUrl(undefined); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+                <Trash2 size={12} /> Remove image
+              </button>
+            )}
+            {uploadError && <small className="danger-text">{uploadError}</small>}
+            {!imageUrl && <small className="muted-text">No image? A branded SVG will be used.</small>}
+          </div>
+
+          <div className="product-form-fields">
+            <label className="product-form-label">Product name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Club Beer" /></label>
+            <label className="product-form-label">Category
+              <select value={category} onChange={(e) => setCategory(e.target.value as ProductCategory)}>
+                {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="product-form-label">Bottle price (GHS)<input type="number" value={bottlePrice} onChange={(e) => setBottlePrice(e.target.value)} placeholder="18" /></label>
+            <label className="product-form-label">Cost price (GHS)<input type="number" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="12" /></label>
+            {hasShots && (
+              <>
+                <label className="product-form-label">Shot price (GHS)<input type="number" value={shotPrice} onChange={(e) => setShotPrice(e.target.value)} placeholder="15" /></label>
+                <label className="product-form-label">Shots per bottle<input type="number" value={shotsPerBottle} onChange={(e) => setShotsPerBottle(e.target.value)} placeholder="15" /></label>
+                <label className="product-form-label">Remaining shots<input type="number" value={remainingShots} onChange={(e) => setRemainingShots(e.target.value)} placeholder="0" /></label>
+              </>
+            )}
+            <label className="product-form-label">Stock (bottles)<input type="number" value={stock} onChange={(e) => setStock(e.target.value)} placeholder="0" /></label>
+            <label className="product-form-label">Reorder level<input type="number" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} placeholder="10" /></label>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" disabled={!name.trim() || !bottlePrice || Number(bottlePrice) <= 0} onClick={handleSave}>
+            {isEdit ? "Save changes" : "Create product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Customers() {
