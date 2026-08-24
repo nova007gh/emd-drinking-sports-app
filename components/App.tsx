@@ -247,22 +247,26 @@ function AppInner() {
         </section>
 
         <nav className="bottom-nav">
-          {([["Dashboard", Home, "Home"], ["POS / Sales", ShoppingCart, "Sales"]] as Array<[Page, IconType, string]>).map(([label, Icon, short]) => (
-            <button key={label} className={page === label ? "active" : ""} onClick={() => setPage(label)}>
-              <Icon size={20}/><span>{short}</span>
+          <button className={page === "Dashboard" ? "active" : ""} onClick={() => setPage("Dashboard")}>
+            <Home size={20}/><span>Home</span>
+          </button>
+
+          {can("sell") && (
+            <button className={page === "POS / Sales" ? "active" : ""} onClick={() => setPage("POS / Sales")}>
+              <ShoppingCart size={20}/><span>Sales</span>
             </button>
-          ))}
+          )}
 
           <button className="bottom-fab" onClick={() => setPage("POS / Sales")} aria-label="New sale">
             <span className="bottom-fab-btn"><Plus size={26}/></span>
             <span>New Sale</span>
           </button>
 
-          {([["Tables", LayoutGrid, "Tables"], ["Reports", BarChart3, "Reports"]] as Array<[Page, IconType, string]>).map(([label, Icon, short]) => (
-            <button key={label} className={page === label ? "active" : ""} onClick={() => setPage(label)}>
-              <Icon size={20}/><span>{short}</span>
+          {can("manage_tables") && (
+            <button className={page === "Tables" ? "active" : ""} onClick={() => setPage("Tables")}>
+              <LayoutGrid size={20}/><span>Tables</span>
             </button>
-          ))}
+          )}
 
           <button onClick={() => setMobileNav(true)} aria-label="More">
             <Menu size={20}/><span>More</span>
