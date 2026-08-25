@@ -19,6 +19,7 @@ import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
 import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory } from "@/lib/types";
 import type { Permission } from "@/lib/auth/roles";
+import { QRCodeSVG } from "qrcode.react";
 
 type Page =
   | "Dashboard" | "POS / Sales" | "Tables" | "Inventory" | "Customers" | "Debts"
@@ -1267,6 +1268,7 @@ function Tables() {
   const [transferFrom, setTransferFrom] = useState<string | null>(null);
   const [splitTableId, setSplitTableId] = useState<string | null>(null);
   const [splitLines, setSplitLines] = useState<Set<string>>(new Set());
+  const [qrTableId, setQrTableId] = useState<string | null>(null);
 
   const handleTableClick = (id: string) => {
     if (transferFrom) {
@@ -1311,13 +1313,38 @@ function Tables() {
     {transferFrom && <div className="notice">Select a target table to transfer from {tables.find(t=>t.id===transferFrom)?.name}</div>}
     <div className="table-grid">{tables.map(t=><div key={t.id} role="button" tabIndex={0} className={`table-card ${t.occupied?"occupied":"available"} ${selected===t.id?"selected":""} ${transferFrom===t.id?"transfer-source":""}`} onClick={()=>handleTableClick(t.id)} onKeyDown={(e:React.KeyboardEvent)=>{if(e.key==="Enter"||e.key===" ")handleTableClick(t.id)}}>
       <LayoutGrid/><h3>{t.name}</h3><span>{t.occupied?"Occupied":"Available"}</span><b>{money(t.bill)}</b>
-      {t.occupied && <div className="table-actions">
-        <button className="mini transfer-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setTransferFrom(t.id)}}><ArrowRightLeft size={11}/> Transfer</button>
-        <button className="mini split-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();openSplit(t.id)}}><Scissors size={11}/> Split</button>
-      </div>}
+      <div className="table-actions">
+        <button className="mini qr-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setQrTableId(t.id)}}><Smartphone size={11}/> QR</button>
+        {t.occupied && <button className="mini transfer-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setTransferFrom(t.id)}}><ArrowRightLeft size={11}/> Transfer</button>}
+        {t.occupied && <button className="mini split-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();openSplit(t.id)}}><Scissors size={11}/> Split</button>}
+      </div>
     </div>)}</div>
 
     <CustomerOrdersPanel />
+
+    {qrTableId && (
+      <div className="modal-overlay" onClick={()=>setQrTableId(null)}>
+        <div className="modal-card qr-modal" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
+          <h2>{tables.find(t=>t.id===qrTableId)?.name} — QR Code</h2>
+          <p className="modal-subtitle">Customers scan this to open the portal and order to this table</p>
+          <div className="qr-display">
+            <QRCodeSVG
+              value={`${typeof window !== "undefined" ? window.location.origin : ""}/portal?table=${qrTableId}`}
+              size={220}
+              level="M"
+              includeMargin={true}
+            />
+          </div>
+          <p className="qr-url">
+            <Smartphone size={14} /> {`/portal?table=${qrTableId}`}
+          </p>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={()=>setQrTableId(null)}>Close</button>
+            <button className="btn-primary" onClick={()=>window.print()}>Print</button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {splitTableId && splitSale && (
       <div className="modal-overlay" onClick={()=>setSplitTableId(null)}>

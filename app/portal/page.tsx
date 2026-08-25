@@ -16,30 +16,72 @@ const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
 type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet";
 
+const PORTAL_SESSION_KEY = "emd-portal-customer-id";
+
 export default function CustomerPortal() {
   const [tab, setTab] = useState<PortalTab>("home");
   const [customerId, setCustomerId] = useState<string | null>(null);
-  const [, setCustomerName] = useState("");
-  const [, setCustomerPhone] = useState("");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [checkedIn, setCheckedIn] = useState(false);
 
   const customers = useAppStore(s => s.customers);
+  const addCustomer = useAppStore(s => s.addCustomer);
   const barOpen = useAppStore(s => s.barOpen);
+  const tables = useAppStore(s => s.tables);
 
-  // Auto-select first customer for demo
+  // Restore session from localStorage and pick up table from URL
   useEffect(() => {
-    if (!customerId && customers.length > 0) {
-      setCustomerId(customers[0].id);
-      setCustomerName(customers[0].name);
-      setCustomerPhone(customers[0].phone);
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem(PORTAL_SESSION_KEY);
+    if (saved) {
+      setCustomerId(saved);
+      setCheckedIn(true);
     }
-  }, [customers, customerId]);
+    // Auto-select table from URL param (?table=t3)
+    const params = new URLSearchParams(window.location.search);
+    const tableParam = params.get("table");
+    if (tableParam) {
+      setSelectedTableId(tableParam);
+      // If a table is in the URL, jump straight to the menu
+      setTab("menu");
+    }
+  }, []);
 
-  if (!customerId) {
-    return <div className="portal-shell"><div className="portal-loading"><Loader2 className="animate-spin" size={24} /> Loading...</div></div>;
+  const handleCheckIn = (phone: string, name: string) => {
+    const existing = customers.find(c => c.phone === phone);
+    let id: string;
+    if (existing) {
+      id = existing.id;
+    } else {
+      // Create a new customer record
+      addCustomer(name || `Guest ${phone.slice(-4)}`, phone);
+      // Find the newly added customer by phone (it's the last one added)
+      const updated = useAppStore.getState().customers;
+      const created = updated.find(c => c.phone === phone);
+      id = created?.id ?? updated[updated.length - 1].id;
+    }
+    setCustomerId(id);
+    setCheckedIn(true);
+    localStorage.setItem(PORTAL_SESSION_KEY, id);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem(PORTAL_SESSION_KEY);
+    setCustomerId(null);
+    setCheckedIn(false);
+    setTab("home");
+  };
+
+  if (!checkedIn || !customerId) {
+    return <PortalCheckIn onCheckIn={handleCheckIn} barOpen={barOpen} />;
   }
 
   const customer = customers.find(c => c.id === customerId);
+  if (!customer) {
+    // Customer was deleted or not found — clear session and show check-in
+    localStorage.removeItem(PORTAL_SESSION_KEY);
+    return <PortalCheckIn onCheckIn={handleCheckIn} barOpen={barOpen} />;
+  }
 
   return (
     <div className="portal-shell">
@@ -72,6 +114,9 @@ export default function CustomerPortal() {
                   <b>{money(customer.walletBalance)}</b>
                 </div>
               </button>
+              <button className="portal-signout" onClick={handleSignOut} title="Sign out">
+                <Smartphone size={14} />
+              </button>
             </div>
           )}
         </div>
@@ -101,6 +146,92 @@ export default function CustomerPortal() {
           {tab === "orders" && <PortalOrders customerId={customerId} />}
           {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
           {tab === "wallet" && <PortalWallet customerId={customerId} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PortalCheckIn({ onCheckIn, barOpen }: { onCheckIn: (phone: string, name: string) => void; barOpen: boolean }) {
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const customers = useAppStore(s => s.customers);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = phone.trim();
+    if (!cleanPhone) { setError("Please enter your phone number"); return; }
+    if (cleanPhone.length < 9) { setError("Phone number seems too short"); return; }
+    setError(null);
+    onCheckIn(cleanPhone, name.trim());
+  };
+
+  // Quick-fill for demo customers
+  const quickFill = (demoPhone: string) => {
+    setPhone(demoPhone);
+    const c = customers.find(c => c.phone === demoPhone);
+    if (c) setName(c.name);
+  };
+
+  return (
+    <div className="portal-shell">
+      <div className="portal-checkin">
+        <div className="portal-checkin-card">
+          <div className="portal-checkin-brand">
+            <div className="portal-logo"><Crown size={28} /></div>
+            <div>
+              <strong>EMD</strong>
+              <span>BAR &amp; LOUNGE</span>
+            </div>
+          </div>
+
+          <div className={`portal-bar-status ${barOpen ? "open" : "closed"}`}>
+            <span className="status-dot" />
+            {barOpen ? "OPEN NOW" : "CLOSED"}
+          </div>
+
+          <h1>Welcome to EMD</h1>
+          <p className="portal-checkin-subtitle">Enter your phone number to access the menu, order drinks, and earn rewards.</p>
+
+          <form onSubmit={handleSubmit} className="portal-checkin-form">
+            <label className="portal-checkin-label">
+              Phone number
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. 0240000001"
+                autoFocus
+              />
+            </label>
+            <label className="portal-checkin-label">
+              Your name <span className="portal-checkin-optional">(optional)</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Kwame Asare"
+              />
+            </label>
+            {error && <small className="portal-checkin-error">{error}</small>}
+            <button type="submit" className="portal-checkin-btn">
+              <Smartphone size={16} /> Continue
+            </button>
+          </form>
+
+          {customers.length > 0 && (
+            <div className="portal-checkin-demo">
+              <small>Quick check-in (demo):</small>
+              <div className="portal-checkin-demo-chips">
+                {customers.slice(0, 4).map(c => (
+                  <button key={c.id} type="button" onClick={() => quickFill(c.phone)} className="portal-demo-chip">
+                    {c.name.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

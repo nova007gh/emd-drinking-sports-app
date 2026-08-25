@@ -545,6 +545,31 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 /* ===== CUSTOMER PORTAL ===== */
 .portal-shell{min-height:100vh;background:radial-gradient(circle at 50% -10%,rgba(212,175,55,.08),transparent 40%),var(--bg);padding-bottom:20px}
 .portal-inner{max-width:480px;margin:0 auto;min-height:100vh}
+.portal-checkin{min-height:100vh;display:grid;place-items:center;padding:20px}
+.portal-checkin-card{max-width:400px;width:100%;background:#151718;border:1px solid var(--line);border-radius:16px;padding:32px;text-align:center}
+.portal-checkin-brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px}
+.portal-checkin-brand strong{font-size:20px;color:var(--gold);display:block;text-align:left}
+.portal-checkin-brand span{font-size:10px;letter-spacing:.15em;color:var(--muted);display:block;text-align:left}
+.portal-checkin h1{font-size:22px;margin:16px 0 4px}
+.portal-checkin-subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
+.portal-checkin-form{display:flex;flex-direction:column;gap:12px;text-align:left}
+.portal-checkin-label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.portal-checkin-label input{background:#101214;color:#fff;border:1px solid var(--line);border-radius:8px;padding:11px 12px;font-size:14px;outline:none;text-transform:none;letter-spacing:normal}
+.portal-checkin-label input:focus{border-color:var(--gold)}
+.portal-checkin-optional{color:var(--muted);opacity:.6;text-transform:none;letter-spacing:normal}
+.portal-checkin-error{color:#e88;font-size:12px}
+.portal-checkin-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--gold);color:#1a1a1a;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px}
+.portal-checkin-btn:hover{background:var(--yellow)}
+.portal-checkin-demo{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.portal-checkin-demo small{color:var(--muted);font-size:11px}
+.portal-checkin-demo-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;justify-content:center}
+.portal-demo-chip{background:#1a1d1f;border:1px solid var(--line);color:var(--gold);border-radius:16px;padding:5px 14px;font-size:12px;cursor:pointer}
+.portal-demo-chip:hover{border-color:var(--gold)}
+.portal-signout{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;display:grid;place-items:center}
+.portal-signout:hover{color:#e88;border-color:#e88}
+.qr-modal{max-width:360px;text-align:center}
+.qr-display{display:grid;place-items:center;padding:20px;background:#fff;border-radius:12px;margin:16px auto;width:260px;height:260px}
+.qr-url{font-family:monospace;font-size:12px;color:var(--muted);background:#0d0f10;border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;align-items:center;justify-content:center;gap:6px}
 .portal-header{display:flex;flex-direction:column;gap:10px}
 .portal-header-left{display:flex;align-items:center;justify-content:space-between}
 .portal-welcome{display:flex;align-items:center;gap:12px;padding:8px 20px 14px}

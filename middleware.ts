@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicPaths = ["/login", "/unauthorized", "/forgot-password", "/reset-password"];
+const publicPaths = ["/login", "/unauthorized", "/forgot-password", "/reset-password", "/portal", "/guide"];
 const supabaseConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 export async function middleware(request: NextRequest) {
