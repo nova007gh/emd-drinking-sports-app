@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, EventCategory, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
 const PERSIST_KEY = "emd-drinking-sports-v4";
 

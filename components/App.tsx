@@ -6,7 +6,7 @@ import {
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
   Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
-  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper, Mic
+  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";

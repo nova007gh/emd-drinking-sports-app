@@ -7,27 +7,22 @@ export const metadata: Metadata = {
 
 export default function GuidePage() {
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <style>{GUIDE_CSS}</style>
-      </head>
-      <body>
-        <div className="guide-page">
-          <div className="guide-cover">
-            <div className="guide-cover-logo">EMD</div>
-            <h1>EMD Drinking Sports</h1>
-            <h2>Bar &amp; Lounge Management System</h2>
-            <p className="guide-cover-subtitle">Complete User Guide</p>
-            <p className="guide-cover-version">Version 1.0 — {new Date().toLocaleDateString()}</p>
-            <div className="guide-cover-roles">
-              <span>Owner</span>
-              <span>Manager</span>
-              <span>Cashier</span>
-              <span>Waiter</span>
-              <span>Customer</span>
-            </div>
-          </div>
+    <div className="guide-page">
+      <style>{GUIDE_CSS}</style>
+      <div className="guide-cover">
+        <div className="guide-cover-logo">EMD</div>
+        <h1>EMD Drinking Sports</h1>
+        <h2>Bar &amp; Lounge Management System</h2>
+        <p className="guide-cover-subtitle">Complete User Guide</p>
+        <p className="guide-cover-version">Version 1.0 — {new Date().toLocaleDateString()}</p>
+        <div className="guide-cover-roles">
+          <span>Owner</span>
+          <span>Manager</span>
+          <span>Cashier</span>
+          <span>Waiter</span>
+          <span>Customer</span>
+        </div>
+      </div>
 
           <div className="guide-toc">
             <h2>Table of Contents</h2>
@@ -527,14 +522,12 @@ export default function GuidePage() {
             <p>Check the Movement History on the Inventory page to trace all stock changes. Every addition, sale, and adjustment is recorded with a timestamp and reason.</p>
           </section>
 
-          <div className="guide-footer">
-            <p>EMD Drinking Sports — Bar &amp; Lounge Management System</p>
-            <p>User Guide v1.0 — Generated {new Date().toLocaleDateString()}</p>
-            <p>For support, contact your system administrator.</p>
-          </div>
+        <div className="guide-footer">
+          <p>EMD Drinking Sports — Bar &amp; Lounge Management System</p>
+          <p>User Guide v1.0 — Generated {new Date().toLocaleDateString()}</p>
+          <p>For support, contact your system administrator.</p>
         </div>
-      </body>
-    </html>
+    </div>
   );
 }
 

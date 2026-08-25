@@ -27,7 +27,6 @@ export default function CustomerPortal() {
   const customers = useAppStore(s => s.customers);
   const addCustomer = useAppStore(s => s.addCustomer);
   const barOpen = useAppStore(s => s.barOpen);
-  const tables = useAppStore(s => s.tables);
 
   // Restore session from localStorage and pick up table from URL
   useEffect(() => {
