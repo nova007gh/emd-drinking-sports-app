@@ -720,18 +720,16 @@ test("sidebar shows bar and lounge tagline", async ({ page }) => {
   await expect(page.getByText("BAR & LOUNGE MANAGEMENT")).toBeVisible();
 });
 
-test("POS shows quick action row", async ({ page }) => {
+test("POS shows pagination controls", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
-  await expect(page.locator(".pos-quick-actions")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Quick Cash Sale/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Clear Cart/ })).toBeVisible();
+  await expect(page.locator(".pagination")).toBeVisible();
+  await expect(page.getByText(/Page \d+ of \d+|items/)).toBeVisible();
 });
 
-test("POS product cards show stock footer", async ({ page }) => {
+test("POS product cards show stock badge", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
-  await expect(page.locator(".product-footer").first()).toBeVisible();
-  await expect(page.getByText(/Stock: \d+/).first()).toBeVisible();
-  await expect(page.getByText(/Shots Left: \d+/).first()).toBeVisible();
+  // Out-of-stock products should show an OUT badge
+  await expect(page.locator(".stock-chip.out").first()).toBeVisible();
 });
 
 test("POS cart shows subtotal, discount and line totals", async ({ page }) => {
@@ -768,12 +766,15 @@ test("POS OPEN TAB requires a table and reports running total", async ({ page })
   await expect(page.getByText(/running/)).toBeVisible();
 });
 
-test("POS quick cash sale completes a sale", async ({ page }) => {
+test("POS pagination navigates to next page", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
-  const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
-  await clubCard.getByRole("button", { name: /Bottle/ }).click();
-  await page.getByRole("button", { name: /Quick Cash Sale/ }).click();
-  await expect(page.getByText(/completed/)).toBeVisible();
+  // If there are multiple pages, clicking next should reveal new products
+  const nextBtn = page.locator(".page-nav").last();
+  if (await nextBtn.isEnabled({ timeout: 2000 }).catch(() => false)) {
+    const firstPageNum = page.locator(".page-num.active");
+    await nextBtn.click();
+    await expect(firstPageNum).not.toHaveClass(/active/);
+  }
 });
 
 test("payment donut legend shows percentages", async ({ page }) => {

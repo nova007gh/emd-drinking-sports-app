@@ -828,6 +828,8 @@ function POS() {
   const [showHeld, setShowHeld] = useState(false);
   const [lastSale, setLastSale] = useState<SaleRecord | null>(null);
   const searchRef = React.useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 24;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -854,6 +856,9 @@ function POS() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [cart.length, payment, discount]);
+
+  // Reset to first page whenever search or category filter changes
+  useEffect(() => { setPage(1); }, [search, category]);
 
   const subtotal = cart.reduce((s,l)=>s+l.unitPrice*l.quantity,0);
   const total = Math.max(0, subtotal - discount);
@@ -918,6 +923,9 @@ function POS() {
     (category === "All" || p.category === category) &&
     (search === "" || p.name.toLowerCase().includes(search.toLowerCase()))
   );
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const recentSales = sales.slice(0, 5);
 
   return <>
@@ -977,46 +985,41 @@ function POS() {
       </div>
     )}
 
-    <div className="pos-inventory-bar">
-      <div className="pos-inv-stat"><Package size={14}/> <b>{products.length}</b> <span>Products</span></div>
-      <div className="pos-inv-stat"><Boxes size={14}/> <b>{products.reduce((s,p)=>s+p.stock,0)}</b> <span>Total Stock</span></div>
-      <div className="pos-inv-stat danger"><AlertTriangle size={14}/> <b>{products.filter(p=>p.stock<=p.reorderLevel && p.active).length}</b> <span>Low Stock</span></div>
-      <div className="pos-inv-stat"><CheckCircle2 size={14}/> <b>{products.filter(p=>p.stock>p.reorderLevel && p.active).length}</b> <span>Healthy</span></div>
-      <div className="pos-inv-stat gold"><CircleDollarSign size={14}/> <b>{money(products.reduce((s,p)=>s+p.stock*p.bottlePrice,0))}</b> <span>Stock Value</span></div>
-    </div>
-
     <div className="pos-layout">
       <div className="pos-products-col">
         <div className="search pos-search"><Search size={17}/><input ref={searchRef} placeholder="Search products… (press / to search)" value={search} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setSearch(e.target.value)} autoFocus/></div>
         <div className="category-row">{categories.map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div>
         <div className="product-grid">
-          {filteredProducts.map(p=>{
-            const unitLabel = p.category==="Cigarettes" ? "Pack" : p.category==="Snacks" ? "Item" : "Bottle";
+          {pagedProducts.map(p=>{
             const low = p.stock <= p.reorderLevel;
             return <article className={`product-card ${p.stock<=0?"out-of-stock":""}`} key={p.id}>
-            <div className="product-visual">
-              <ProductVisual product={p}/>
-              {p.stock<=0 ? <span className="stock-chip out">Out</span> : low ? <span className="stock-chip low">Low</span> : null}
+            <div className="product-card-head">
+              <h3>{p.name}</h3>
+              {p.stock<=0 ? <span className="stock-chip out">OUT</span> : low ? <span className="stock-chip low">LOW</span> : null}
             </div>
-            <div><h3>{p.name}</h3><small>{p.category} • Stock {p.stock}</small></div>
             <div className="price-buttons">
-              <button onClick={()=>add(p.id,"bottle")} disabled={p.stock<=0}><span>{unitLabel}</span>{money(p.bottlePrice)}</button>
-              {p.shotPrice && <button className="gold" onClick={()=>add(p.id,"shot")}><span>Shot / Tot</span>{money(p.shotPrice)}</button>}
-            </div>
-            <div className="product-footer">
-              <small>Stock: {p.stock}</small>
-              {p.shotsPerBottle && <small className="shots-left">Shots Left: {p.remainingShots ?? p.shotsPerBottle}</small>}
+              <button onClick={()=>add(p.id,"bottle")} disabled={p.stock<=0}><span>Bottle</span>{money(p.bottlePrice)}</button>
+              {p.shotPrice && <button className="gold" onClick={()=>add(p.id,"shot")} disabled={p.stock<=0}><span>Shot</span>{money(p.shotPrice)}</button>}
             </div>
           </article>;
           })}
         </div>
 
-        <div className="pos-quick-actions">
-          <button onClick={()=>{ if(cart.length){ setPayment("cash"); complete(); } }} disabled={!cart.length}><CircleDollarSign size={15}/> Quick Cash Sale</button>
-          <button onClick={()=>holdOrder()} disabled={!cart.length}><Pause size={15}/> Hold Order</button>
-          <button onClick={()=>setShowHeld(!showHeld)} disabled={!heldOrders.length}><ReceiptText size={15}/> Open Orders{heldOrders.length>0?` (${heldOrders.length})`:""}</button>
-          <button onClick={()=>{ if(cart.length && confirm("Clear cart?")) clear(); }} disabled={!cart.length}><Trash2 size={15}/> Clear Cart</button>
-        </div>
+        {totalPages > 1 && (
+          <div className="pagination">
+            <span className="page-info">Page {currentPage} of {totalPages} · {filteredProducts.length} items</span>
+            <div className="page-controls">
+              <button className="page-nav" disabled={currentPage===1} onClick={()=>setPage(p=>Math.max(1,p-1))} aria-label="Previous page">‹</button>
+              {Array.from({length: totalPages}, (_, i) => i + 1).map(n =>
+                <button key={n} className={`page-num ${n===currentPage?"active":""}`} onClick={()=>setPage(n)}>{n}</button>
+              )}
+              <button className="page-nav" disabled={currentPage===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} aria-label="Next page">›</button>
+            </div>
+          </div>
+        )}
+        {totalPages === 1 && filteredProducts.length > 0 && (
+          <div className="pagination"><span className="page-info">{filteredProducts.length} items</span></div>
+        )}
       </div>
       <div className="pos-cart-col">
       <aside className="cart-panel">

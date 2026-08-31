@@ -56,7 +56,7 @@ create policy "Customers can view own orders"
 -- Customers can create orders
 create policy "Customers can create orders"
   on public.customer_orders for insert
-  with check (true);
+  using (true);
 
 create policy "Anyone can view order lines"
   on public.customer_order_lines for select
@@ -64,7 +64,7 @@ create policy "Anyone can view order lines"
 
 create policy "Customers can create order lines"
   on public.customer_order_lines for insert
-  with check (true);
+  using (true);
 
 -- ============================================================
 -- 3. Waiter Calls (customer calls waiter from portal)
@@ -94,7 +94,7 @@ create policy "Staff can update waiter calls"
 
 create policy "Customers can create waiter calls"
   on public.waiter_calls for insert
-  with check (true);
+  using (true);
 
 create policy "Customers can view waiter calls"
   on public.waiter_calls for select
@@ -123,7 +123,7 @@ create policy "Staff can view chat messages"
 
 create policy "Staff can send chat messages"
   on public.chat_messages for insert
-  with check (auth.role() = 'authenticated');
+  using (auth.role() = 'authenticated');
 
 create policy "Customers can view chat messages"
   on public.chat_messages for select
@@ -131,7 +131,7 @@ create policy "Customers can view chat messages"
 
 create policy "Customers can send chat messages"
   on public.chat_messages for insert
-  with check (true);
+  using (true);
 
 -- ============================================================
 -- 5. Event Bookings (customer attends or reserves table for event)
@@ -160,7 +160,7 @@ create policy "Customers can view event bookings"
 
 create policy "Customers can create event bookings"
   on public.event_bookings for insert
-  with check (true);
+  using (true);
 
 -- ============================================================
 -- 6. Bar settings (open/closed status)
@@ -183,7 +183,7 @@ create policy "Staff can update bar settings"
 
 create policy "Staff can insert bar settings"
   on public.bar_settings for insert
-  with check (auth.role() = 'authenticated');
+  using (auth.role() = 'authenticated');
 
 -- Insert default setting
 insert into public.bar_settings (is_open) values (true) on conflict do nothing;
@@ -214,7 +214,7 @@ create policy "Customers can view own topups"
 
 create policy "Customers can create topups"
   on public.wallet_topups for insert
-  with check (true);
+  using (true);
 
 -- ============================================================
 -- 8. Updated_at triggers
