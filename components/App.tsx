@@ -812,9 +812,17 @@ function POS() {
   const myTodayTotal = myTodaySales.reduce((sum, s) => sum + s.total, 0);
   const myTodayItems = myTodaySales.reduce((sum, s) => sum + s.lines.reduce((ls, l) => ls + l.quantity, 0), 0);
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadAvatar(file);
+    e.target.value = "";
+    if (!file) return;
+    setMessage("Uploading profile picture…");
+    const { error } = await uploadAvatar(file);
+    if (error) {
+      setMessage(`Profile picture update failed: ${error}`);
+    } else {
+      setMessage("Profile picture updated successfully.");
+    }
   };
 
   const [category, setCategory] = useState<ProductCategory | "All">("All");

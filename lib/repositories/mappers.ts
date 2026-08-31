@@ -149,7 +149,7 @@ export function mapExpenseFromDb(row: SupabaseRow): Expense {
 export function mapStaffFromDb(row: SupabaseRow): StaffMember {
   return {
     id: row.id as string,
-    name: (row.full_name as string) ?? "",
+    name: (row.name as string) ?? (row.full_name as string) ?? "",
     role: (row.role as string) as StaffMember["role"],
     active: (row.active as boolean) ?? true,
     phone: row.phone as string | undefined,

@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           const { data: profile, error: profileErr } = await supabase
             .from("profiles")
-            .select("full_name, role, avatar_url")
+            .select("name, role, avatar_url")
             .eq("id", session.user.id)
             .single();
           if (profileErr) {
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const authUser: AuthUser = {
               id: session.user.id,
               email: session.user.email ?? "",
-              name: (profile as { full_name: string }).full_name,
+              name: (profile as { name: string }).name,
               role: profile.role as AppRole,
               avatarUrl: (profile as { avatar_url?: string }).avatar_url
             };
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
-          .select("full_name, role, avatar_url")
+          .select("name, role, avatar_url")
           .eq("id", data.user.id)
           .single();
         if (profileErr) {
@@ -159,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const authUser: AuthUser = {
             id: data.user.id,
             email: data.user.email ?? "",
-            name: (profile as { full_name: string }).full_name,
+            name: (profile as { name: string }).name,
             role: profile.role as AppRole,
             avatarUrl: (profile as { avatar_url?: string }).avatar_url
           };
