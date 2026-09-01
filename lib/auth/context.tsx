@@ -244,17 +244,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      if (!user) return { error: "Not authenticated" };
-      const ext = file.name.split(".").pop() ?? "png";
-      const path = `${user.id}/avatar.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-      if (uploadError) return { error: uploadError.message };
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
-      setAvatarUrl(publicUrl);
-      setUser({ ...user, avatarUrl: publicUrl });
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/avatar", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "Upload failed" };
+      setAvatarUrl(data.url);
+      if (user) setUser({ ...user, avatarUrl: data.url });
       return { error: null };
     } catch {
       return { error: "Failed to upload avatar" };
