@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, SeatTab, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, SeatTab, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking, AppRole } from "./types";
 
 const PERSIST_KEY = "emd-drinking-sports-v4";
 
@@ -108,6 +108,19 @@ interface AppState {
   /** Notifications for upcoming events */
   eventNotifications: Array<{ id: string; text: string; eventId: string; severity: "info" | "warning" }>;
   dismissEventNotification: (id: string) => void;
+  // Employee management
+  addStaff: (name: string, role: AppRole, phone?: string) => void;
+  updateStaff: (id: string, updates: Partial<StaffMember>) => void;
+  removeStaff: (id: string) => void;
+  suspendStaff: (id: string) => void;
+  reactivateStaff: (id: string) => void;
+  // Role permissions
+  rolePermissions: Record<string, string[]>;
+  setRolePermission: (role: AppRole, permission: string, granted: boolean) => void;
+  // Customer reports
+  customerReports: Array<{ id: string; tableId: string; customerId?: string; customerName: string; waiterId?: string; subject: string; message: string; status: "open" | "resolved"; createdAt: string; resolution?: string }>;
+  submitCustomerReport: (tableId: string, customerId: string, customerName: string, subject: string, message: string, waiterId?: string) => void;
+  resolveCustomerReport: (reportId: string, resolution: string) => void;
 }
 
 const totalOf = (cart: CartLine[]) => cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -175,6 +188,13 @@ export const useAppStore = create<AppState>()(
       chatMessages: [],
       eventBookings: [],
       eventNotifications: [],
+      rolePermissions: {
+        owner: ["sell","manage_tables","manage_customers","manage_debts","manage_inventory","manage_expenses","manage_events","view_reports","manage_staff","manage_settings","void_sale"],
+        manager: ["sell","manage_tables","manage_customers","manage_debts","manage_inventory","manage_expenses","manage_events","view_reports","void_sale"],
+        cashier: ["sell","manage_tables","manage_customers","manage_debts","view_reports"],
+        waiter: ["sell","manage_tables","manage_customers"]
+      },
+      customerReports: [],
 
       addToCart: (productId, mode) => {
         const product = get().products.find((p) => p.id === productId);
@@ -925,6 +945,62 @@ export const useAppStore = create<AppState>()(
 
       dismissEventNotification: (id) => set((state) => ({
         eventNotifications: state.eventNotifications.filter(n => n.id !== id),
+      })),
+
+      addStaff: (name, role, phone) => set((state) => ({
+        staff: [...state.staff, {
+          id: crypto.randomUUID(),
+          name,
+          role,
+          active: true,
+          phone,
+          salesCount: 0,
+          ordersHandled: 0
+        }]
+      })),
+
+      updateStaff: (id, updates) => set((state) => ({
+        staff: state.staff.map(s => s.id === id ? { ...s, ...updates } : s)
+      })),
+
+      removeStaff: (id) => set((state) => ({
+        staff: state.staff.filter(s => s.id !== id)
+      })),
+
+      suspendStaff: (id) => set((state) => ({
+        staff: state.staff.map(s => s.id === id ? { ...s, active: false } : s)
+      })),
+
+      reactivateStaff: (id) => set((state) => ({
+        staff: state.staff.map(s => s.id === id ? { ...s, active: true } : s)
+      })),
+
+      setRolePermission: (role, permission, granted) => set((state) => {
+        const current = state.rolePermissions[role] ?? [];
+        const next = granted
+          ? [...new Set([...current, permission])]
+          : current.filter(p => p !== permission);
+        return { rolePermissions: { ...state.rolePermissions, [role]: next } };
+      }),
+
+      submitCustomerReport: (tableId, customerId, customerName, subject, message, waiterId) => set((state) => ({
+        customerReports: [{
+          id: crypto.randomUUID(),
+          tableId,
+          customerId,
+          customerName,
+          waiterId,
+          subject,
+          message,
+          status: "open",
+          createdAt: new Date().toISOString()
+        }, ...state.customerReports]
+      })),
+
+      resolveCustomerReport: (reportId, resolution) => set((state) => ({
+        customerReports: state.customerReports.map(r => r.id === reportId
+          ? { ...r, status: "resolved", resolution }
+          : r)
       })),
     }),
     {

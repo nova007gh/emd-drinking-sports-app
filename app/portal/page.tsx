@@ -14,7 +14,7 @@ import { InventoryError } from "@/lib/domain/inventory";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
-type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet";
+type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet" | "report";
 
 const PORTAL_SESSION_KEY = "emd-portal-customer-id";
 
@@ -128,7 +128,8 @@ export default function CustomerPortal() {
             ["tables", "Tables", MapPin],
             ["orders", "My Orders", Receipt],
             ["waiter", "Waiter", Bell],
-            ["wallet", "Wallet", Wallet]
+            ["wallet", "Wallet", Wallet],
+            ["report", "Report", AlertTriangle]
           ] as Array<[PortalTab, string, typeof Home]>).map(([key, label, Icon]) => (
             <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
               <Icon size={18} />
@@ -145,6 +146,7 @@ export default function CustomerPortal() {
           {tab === "orders" && <PortalOrders customerId={customerId} />}
           {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
           {tab === "wallet" && <PortalWallet customerId={customerId} />}
+          {tab === "report" && <PortalReport customerId={customerId} customerName={customer?.name ?? ""} selectedTableId={selectedTableId} />}
         </div>
       </div>
     </div>
@@ -924,6 +926,110 @@ function PortalWallet({ customerId }: { customerId: string }) {
         <p>Use your wallet to pay for orders from the My Orders tab when they're served. Wallet payments are instant — no need to wait for a waiter to bring the bill.</p>
         <p>You can also pay with MoMo or cash directly from the My Orders tab if you prefer.</p>
       </div>
+    </div>
+  );
+}
+
+function PortalReport({ customerId, customerName, selectedTableId }: { customerId: string; customerName: string; selectedTableId: string | null }) {
+  const submitCustomerReport = useAppStore(s => s.submitCustomerReport);
+  const customerReports = useAppStore(s => s.customerReports);
+  const staff = useAppStore(s => s.staff);
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [selectedWaiter, setSelectedWaiter] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const waiters = staff.filter(s => s.role === "waiter" && s.active);
+  const myReports = customerReports.filter(r => r.customerId === customerId);
+
+  const reportSubjects = [
+    "Slow service",
+    "Rude waiter",
+    "Wrong order",
+    "Food/drink quality",
+    "Billing issue",
+    "Cleanliness",
+    "Other complaint",
+    "Compliment / Suggestion"
+  ];
+
+  const handleSubmit = () => {
+    if (!subject || !message.trim()) return;
+    submitCustomerReport(
+      selectedTableId ?? "unassigned",
+      customerId,
+      customerName,
+      subject,
+      message.trim(),
+      selectedWaiter || undefined
+    );
+    setSubject("");
+    setMessage("");
+    setSelectedWaiter("");
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 4000);
+  };
+
+  return (
+    <div className="portal-section">
+      <h2 className="portal-title">Report an Issue</h2>
+      <p className="portal-subtitle">Send a report to management about service, staff, or any issue</p>
+
+      {submitted && (
+        <div className="portal-success-banner">
+          <CheckCircle2 size={18} />
+          <span>Your report has been submitted to management. They will review it shortly.</span>
+        </div>
+      )}
+
+      <div className="portal-report-form">
+        <label>
+          <small>Subject</small>
+          <select value={subject} onChange={e => setSubject(e.target.value)}>
+            <option value="">Select a subject…</option>
+            {reportSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+
+        <label>
+          <small>Related waiter (optional)</small>
+          <select value={selectedWaiter} onChange={e => setSelectedWaiter(e.target.value)}>
+            <option value="">No specific waiter</option>
+            {waiters.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        </label>
+
+        <label>
+          <small>Details</small>
+          <textarea
+            placeholder="Describe what happened..."
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={4}
+          />
+        </label>
+
+        <button className="portal-btn-primary" disabled={!subject || !message.trim()} onClick={handleSubmit}>
+          <AlertTriangle size={16} /> Submit Report
+        </button>
+      </div>
+
+      {myReports.length > 0 && (
+        <div className="portal-report-history">
+          <h3>Your Reports</h3>
+          {myReports.map(r => (
+            <div key={r.id} className={`portal-report-item ${r.status}`}>
+              <div className="portal-report-head">
+                <strong>{r.subject}</strong>
+                <span className={`portal-report-status ${r.status}`}>{r.status}</span>
+              </div>
+              <p>{r.message}</p>
+              {r.resolution && <div className="portal-report-resolution"><CheckCircle2 size={14}/> <span>Management response: {r.resolution}</span></div>}
+              <small>{new Date(r.createdAt).toLocaleString()}</small>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

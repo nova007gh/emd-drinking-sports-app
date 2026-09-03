@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/context";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const { signIn, isAuthenticated, isLoading, isDemoMode } = useAuth();
+  const { signIn, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,12 +29,6 @@ export default function LoginPage() {
     } else {
       router.replace("/");
     }
-  };
-
-  const fillDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError("");
   };
 
   const quickLogin = async (demoEmail: string, demoPass: string) => {

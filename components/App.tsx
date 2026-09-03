@@ -6,7 +6,7 @@ import {
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
   Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
-  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper
+  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper, MessageSquare, Phone, UserPlus, UserMinus, Ban, CheckCircle
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -17,7 +17,8 @@ import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import { buildReceipt, browserPrinter } from "@/lib/receipt";
 import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
-import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory, CartLine } from "@/lib/types";
+import { useTheme, themes } from "@/lib/hooks/useTheme";
+import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory, CartLine, StaffMember } from "@/lib/types";
 import type { Permission } from "@/lib/auth/roles";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -99,6 +100,7 @@ function AppInner() {
   const events = useAppStore((s) => s.events);
   const syncState = useSyncIntegration();
   const { canInstall, promptInstall } = useInstallPrompt();
+  const { theme, setTheme } = useTheme();
 
   const featuredMatch = matches.find((m) => m.featured && m.active) ?? matches.find((m) => m.active);
   const notifications = useMemo(() => {
@@ -183,6 +185,15 @@ function AppInner() {
           </button>
         )}
         <div className="sidebar-foot">
+          <div className="sidebar-theme-picker">
+            {themes.map(t => (
+              <button key={t.name} className={`sidebar-theme-btn ${theme===t.name?"active":""}`} onClick={()=>setTheme(t.name)} title={t.label} aria-label={t.label}>
+                <span style={{background:t.colors[0]}} className="sidebar-theme-bg">
+                  <span style={{background:t.colors[1]}} className="sidebar-theme-dot"></span>
+                </span>
+              </button>
+            ))}
+          </div>
           <a href="/portal" className="portal-link" target="_blank" rel="noopener noreferrer">
             <Smartphone size={14}/> Customer Portal
           </a>
@@ -239,7 +250,7 @@ function AppInner() {
 
         <section className="content">
           <React.Suspense fallback={<div className="page-loading"><Loader2 className="auth-spinner" size={24}/> Loading…</div>}>
-            {page === "Dashboard" && <Dashboard onNavigate={setPage}/>}
+            {page === "Dashboard" && (role === "waiter" ? <WaiterDashboard onNavigate={setPage}/> : <Dashboard onNavigate={setPage}/>)}
             {page === "POS / Sales" && (can("sell") ? <POS/> : <AccessDenied/>)}
             {page === "Tables" && (can("manage_tables") ? <Tables/> : <AccessDenied/>)}
             {page === "Inventory" && (can("manage_inventory") ? <Inventory/> : <AccessDenied/>)}
@@ -285,6 +296,165 @@ function AppInner() {
         </nav>
       </main>
     </div>
+  );
+}
+
+function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
+  const tables = useAppStore(s => s.tables);
+  const waiterCalls = useAppStore(s => s.waiterCalls);
+  const customerOrders = useAppStore(s => s.customerOrders);
+  const updateWaiterCall = useAppStore(s => s.updateWaiterCall);
+  const chatMessages = useAppStore(s => s.chatMessages);
+  const sendChatMessage = useAppStore(s => s.sendChatMessage);
+  const { user, userName } = useAuth();
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+
+  const occupiedTables = tables.filter(t => t.occupied);
+  const pendingCalls = waiterCalls.filter(c => c.status === "pending");
+  const activeOrders = customerOrders.filter(o => o.status === "pending" || o.status === "preparing");
+  const myMessages = chatMessages.filter(m => m.sender === "customer");
+
+  const handleAcceptCall = (callId: string) => {
+    updateWaiterCall(callId, { status: "accepted", waiterId: user?.id });
+  };
+  const handleArrivedCall = (callId: string) => {
+    updateWaiterCall(callId, { status: "arrived" });
+  };
+  const handleReply = (tableId: string, customerId?: string) => {
+    if (!replyText.trim()) return;
+    sendChatMessage(tableId, "waiter", replyText, customerId, user?.id);
+    setReplyText("");
+    setReplyTo(null);
+  };
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <p>EMD OPERATIONS</p>
+          <h1>Welcome, {userName}</h1>
+          <span>Your tables and customer requests</span>
+        </div>
+      </div>
+
+      <div className="waiter-dashboard">
+        {/* Quick stats */}
+        <div className="waiter-stats">
+          <div className="waiter-stat-card" onClick={() => onNavigate("Tables")}>
+            <LayoutGrid size={24}/>
+            <strong>{occupiedTables.length}</strong>
+            <small>Active Tables</small>
+          </div>
+          <div className="waiter-stat-card urgent" onClick={() => onNavigate("Tables")}>
+            <Bell size={24}/>
+            <strong>{pendingCalls.length}</strong>
+            <small>Call Requests</small>
+          </div>
+          <div className="waiter-stat-card" onClick={() => onNavigate("POS / Sales")}>
+            <ShoppingCart size={24}/>
+            <strong>{activeOrders.length}</strong>
+            <small>Active Orders</small>
+          </div>
+          <div className="waiter-stat-card" onClick={() => onNavigate("POS / Sales")}>
+            <Plus size={24}/>
+            <strong>New</strong>
+            <small>Quick Sale</small>
+          </div>
+        </div>
+
+        {/* Customer calls */}
+        {pendingCalls.length > 0 && (
+          <div className="waiter-section">
+            <h2><Bell size={18}/> Customer Calls ({pendingCalls.length})</h2>
+            <div className="waiter-calls-list">
+              {pendingCalls.map(call => {
+                const table = tables.find(t => t.id === call.tableId);
+                return (
+                  <div key={call.id} className="waiter-call-card">
+                    <div className="waiter-call-info">
+                      <strong>{table?.name ?? "Unknown table"}</strong>
+                      <small>{call.message} · {new Date(call.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small>
+                    </div>
+                    <div className="waiter-call-actions">
+                      <button className="mini btn-primary" onClick={() => handleAcceptCall(call.id)}>Accept</button>
+                      <button className="mini" onClick={() => handleArrivedCall(call.id)}>Arrived</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* My tables */}
+        <div className="waiter-section">
+          <h2><LayoutGrid size={18}/> My Tables</h2>
+          <div className="waiter-tables-grid">
+            {occupiedTables.length === 0 ? (
+              <p className="muted-text">No active tables. Go to Tables to open one.</p>
+            ) : occupiedTables.map(t => (
+              <div key={t.id} className="waiter-table-card" onClick={() => onNavigate("Tables")}>
+                <div className="waiter-table-head">
+                  <strong>{t.name}</strong>
+                  <span className="waiter-table-bill">{money(t.bill)}</span>
+                </div>
+                <div className="waiter-table-meta">
+                  <small>{t.seats.length} {t.seats.length === 1 ? "person" : "people"}</small>
+                  {t.seats.filter(s => !s.paid).length > 0 && <span className="waiter-seat-badge">{t.seats.filter(s => !s.paid).length} unpaid</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Customer messages */}
+        {myMessages.length > 0 && (
+          <div className="waiter-section">
+            <h2><MessageSquare size={18}/> Customer Messages</h2>
+            <div className="waiter-messages-list">
+              {myMessages.slice(-5).map(m => {
+                const table = tables.find(t => t.id === m.tableId);
+                return (
+                  <div key={m.id} className="waiter-message-card">
+                    <div className="waiter-message-info">
+                      <strong>{table?.name ?? "Table"}</strong>
+                      <small>{m.text}</small>
+                      <em>{new Date(m.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</em>
+                    </div>
+                    {replyTo === m.id ? (
+                      <div className="waiter-reply-row">
+                        <input placeholder="Type reply..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReply(m.tableId, m.customerId)} autoFocus />
+                        <button className="mini btn-primary" onClick={() => handleReply(m.tableId, m.customerId)}><Send size={12}/></button>
+                        <button className="mini" onClick={() => { setReplyTo(null); setReplyText(""); }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button className="mini" onClick={() => { setReplyTo(m.id); setReplyText(""); }}>Reply</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <div className="waiter-quick-actions">
+          <button className="waiter-quick-btn" onClick={() => onNavigate("POS / Sales")}>
+            <ShoppingCart size={28}/>
+            <span>New Sale</span>
+          </button>
+          <button className="waiter-quick-btn" onClick={() => onNavigate("Tables")}>
+            <LayoutGrid size={28}/>
+            <span>Manage Tables</span>
+          </button>
+          <button className="waiter-quick-btn" onClick={() => onNavigate("Customers")}>
+            <Users size={28}/>
+            <span>Customers</span>
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1908,6 +2078,107 @@ function Wallets() {
   </PageBox>;
 }
 
+function CustomerReportsPanel() {
+  const customerReports = useAppStore(s => s.customerReports);
+  const resolveCustomerReport = useAppStore(s => s.resolveCustomerReport);
+  const staff = useAppStore(s => s.staff);
+  const customers = useAppStore(s => s.customers);
+  const tables = useAppStore(s => s.tables);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [resolution, setResolution] = useState("");
+
+  const openReports = customerReports.filter(r => r.status === "open");
+  const resolvedReports = customerReports.filter(r => r.status === "resolved");
+
+  const handleResolve = () => {
+    if (!resolving || !resolution.trim()) return;
+    resolveCustomerReport(resolving, resolution.trim());
+    setResolving(null);
+    setResolution("");
+  };
+
+  if (customerReports.length === 0) {
+    return (
+      <div style={{marginTop:16}}>
+        <Panel title="Customer Reports">
+          <p className="muted-text">No customer reports yet. Reports submitted through the Customer Portal will appear here.</p>
+        </Panel>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{marginTop:16}}>
+      <Panel title={`Customer Reports (${openReports.length} open)`}>
+        {openReports.length > 0 && (
+          <div className="reports-list">
+            {openReports.map(r => {
+              const waiter = r.waiterId ? staff.find(s => s.id === r.waiterId) : null;
+              const customer = customers.find(c => c.id === r.customerId);
+              const table = tables.find(t => t.id === r.tableId);
+              return (
+                <div key={r.id} className="report-card open">
+                  <div className="report-card-head">
+                    <div>
+                      <strong>{r.subject}</strong>
+                      <small>from {r.customerName}{table ? ` · ${table.name}` : ""}</small>
+                    </div>
+                    <span className="report-status-badge open">Open</span>
+                  </div>
+                  <p className="report-message">{r.message}</p>
+                  <div className="report-meta">
+                    {waiter && <span className="report-tag"><Users size={11}/> Waiter: {waiter.name} {waiter.phone && `(${waiter.phone})`}</span>}
+                    {customer?.phone && <span className="report-tag"><Phone size={11}/> Customer: {customer.phone}</span>}
+                    <small>{new Date(r.createdAt).toLocaleString()}</small>
+                  </div>
+                  {resolving === r.id ? (
+                    <div className="report-resolve-form">
+                      <input placeholder="Resolution notes..." value={resolution} onChange={e => setResolution(e.target.value)} autoFocus />
+                      <button className="mini btn-primary" onClick={handleResolve} disabled={!resolution.trim()}>Resolve</button>
+                      <button className="mini" onClick={()=>{ setResolving(null); setResolution(""); }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button className="mini btn-primary" onClick={()=>{ setResolving(r.id); setResolution(""); }}>Resolve Report</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {resolvedReports.length > 0 && (
+          <>
+            <h4 style={{marginTop:16,marginBottom:8,color:"var(--muted)"}}>Resolved ({resolvedReports.length})</h4>
+            <div className="reports-list">
+              {resolvedReports.slice(0, 5).map(r => {
+                const waiter = r.waiterId ? staff.find(s => s.id === r.waiterId) : null;
+                const table = tables.find(t => t.id === r.tableId);
+                return (
+                  <div key={r.id} className="report-card resolved">
+                    <div className="report-card-head">
+                      <div>
+                        <strong>{r.subject}</strong>
+                        <small>from {r.customerName}{table ? ` · ${table.name}` : ""}</small>
+                      </div>
+                      <span className="report-status-badge resolved">Resolved</span>
+                    </div>
+                    <p className="report-message">{r.message}</p>
+                    {r.resolution && <div className="report-resolution-text"><CheckCircle2 size={12}/> {r.resolution}</div>}
+                    <div className="report-meta">
+                      {waiter && <span className="report-tag"><Users size={11}/> {waiter.name}</span>}
+                      <small>{new Date(r.createdAt).toLocaleString()}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
 function Reports() {
   const sales=useAppStore(s=>s.sales); const products=useAppStore(s=>s.products); const customers=useAppStore(s=>s.customers);
   const expenses=useAppStore(s=>s.expenses);
@@ -1931,6 +2202,7 @@ function Reports() {
       <Panel title="Product intelligence"><div className="report-list"><Insight title="Top selling" value={insights.bestSeller?.name ?? "—"}/><Insight title="Least selling" value={insights.leastSeller?.name ?? "—"} danger/><Insight title="Highest inventory" value={insights.highStock[0]?.name ?? "—"}/><Insight title="Slow moving" value={`${insights.slowMoving.length} products`} danger={insights.slowMoving.length>0}/></div></Panel>
       <Panel title="Top products by units sold" className="span2"><div className="chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={barDataFull}><XAxis dataKey="name" stroke="#777"/><YAxis stroke="#777"/><Tooltip contentStyle={{background:"#111",border:"1px solid #333"}}/><Bar dataKey="units" fill="#f9c317"/></BarChart></ResponsiveContainer></div></Panel>
     </div>
+    <CustomerReportsPanel />
   </PageBox>;
 }
 
@@ -2314,8 +2586,156 @@ function Expenses() {
 
 function Staff() {
   const staff=useAppStore(s=>s.staff);
-  return <PageBox title="Staff" subtitle="Simple role-aware team overview">
-    <div className="card-grid">{staff.map(s=><article className="info-card" key={s.id}><div className="avatar">{s.name[0]}</div><h3>{s.name}</h3><small>{roleLabels[s.role]}</small>{s.phone && <small>{s.phone}</small>}<div className="info-row"><span>Sales</span><b>{s.salesCount}</b></div><div className="info-row"><span>Orders</span><b>{s.ordersHandled}</b></div><Status ok={s.active} label={s.active?"Active":"Inactive"}/></article>)}</div>
+  const addStaff=useAppStore(s=>s.addStaff);
+  const updateStaff=useAppStore(s=>s.updateStaff);
+  const removeStaff=useAppStore(s=>s.removeStaff);
+  const suspendStaff=useAppStore(s=>s.suspendStaff);
+  const reactivateStaff=useAppStore(s=>s.reactivateStaff);
+  const rolePermissions=useAppStore(s=>s.rolePermissions);
+  const setRolePermission=useAppStore(s=>s.setRolePermission);
+  const { can } = useAuth();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [newName, setNewName] = useState("");
+  const newRole = useState<AppRole>("waiter");
+  const [newPhone, setNewPhone] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<AppRole>("waiter");
+  const [showPermissions, setShowPermissions] = useState(false);
+
+  const allPermissions: Array<{ key: string; label: string }> = [
+    { key: "sell", label: "Sell / POS" },
+    { key: "manage_tables", label: "Manage Tables" },
+    { key: "manage_customers", label: "Manage Customers" },
+    { key: "manage_debts", label: "Manage Debts" },
+    { key: "manage_inventory", label: "Manage Inventory" },
+    { key: "manage_expenses", label: "Manage Expenses" },
+    { key: "manage_events", label: "Manage Events" },
+    { key: "view_reports", label: "View Reports" },
+    { key: "manage_staff", label: "Manage Staff" },
+    { key: "manage_settings", label: "Manage Settings" },
+    { key: "void_sale", label: "Void Sales" }
+  ];
+
+  const handleAdd = () => {
+    if (!newName.trim()) return;
+    addStaff(newName.trim(), newRole[0], newPhone.trim() || undefined);
+    setNewName(""); setNewPhone(""); setShowAdd(false);
+  };
+
+  const startEdit = (s: StaffMember) => {
+    setEditing(s);
+    setEditName(s.name);
+    setEditPhone(s.phone ?? "");
+    setEditRole(s.role);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editing || !editName.trim()) return;
+    updateStaff(editing.id, { name: editName.trim(), phone: editPhone.trim() || undefined, role: editRole });
+    setEditing(null);
+  };
+
+  return <PageBox title="Staff" subtitle="Manage employees, roles, and permissions">
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+      {can("manage_staff") && <button className="btn-primary" onClick={()=>setShowAdd(true)}><UserPlus size={14}/> Add Employee</button>}
+      {can("manage_staff") && <button className="btn-secondary" onClick={()=>setShowPermissions(!showPermissions)}><ShieldCheck size={14}/> {showPermissions?"Hide":"Manage"} Permissions</button>}
+    </div>
+
+    {showPermissions && (
+      <div className="permissions-panel">
+        <h3>Role Permissions</h3>
+        <p className="muted-text" style={{marginBottom:12}}>Toggle permissions for each role. Owner always has all permissions.</p>
+        <div className="permissions-grid">
+          {(["manager","cashier","waiter"] as AppRole[]).map(role => (
+            <div key={role} className="permission-role-card">
+              <h4>{roleLabels[role]}</h4>
+              {allPermissions.map(perm => {
+                const granted = rolePermissions[role]?.includes(perm.key) ?? false;
+                return (
+                  <label key={perm.key} className="permission-toggle-row">
+                    <span>{perm.label}</span>
+                    <label className="football-toggle">
+                      <input type="checkbox" checked={granted} onChange={(e:React.ChangeEvent<HTMLInputElement>) => setRolePermission(role, perm.key, e.target.checked)} disabled={role==="owner"}/>
+                      <i/>
+                    </label>
+                  </label>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <div className="card-grid">{staff.map(s=>
+      <article className={`info-card ${s.active?"":"suspended"}`} key={s.id}>
+        <div className="avatar">{s.name[0]}</div>
+        <h3>{s.name}</h3>
+        <small>{roleLabels[s.role]}</small>
+        {s.phone && <small>{s.phone}</small>}
+        <div className="info-row"><span>Sales</span><b>{s.salesCount}</b></div>
+        <div className="info-row"><span>Orders</span><b>{s.ordersHandled}</b></div>
+        <Status ok={s.active} label={s.active?"Active":"Suspended"}/>
+        {can("manage_staff") && (
+          <div className="staff-card-actions">
+            <button className="mini" onClick={()=>startEdit(s)}><Pencil size={11}/> Edit</button>
+            {s.active
+              ? <button className="mini suspend-btn" onClick={()=>suspendStaff(s.id)}><Ban size={11}/> Suspend</button>
+              : <button className="mini btn-primary" onClick={()=>reactivateStaff(s.id)}><CheckCircle size={11}/> Reactivate</button>}
+            <button className="mini remove-btn" onClick={()=>{ if(confirm(`Remove ${s.name}? This cannot be undone.`)) removeStaff(s.id); }}><UserMinus size={11}/> Remove</button>
+          </div>
+        )}
+      </article>
+    )}</div>
+
+    {showAdd && (
+      <div className="modal-overlay" onClick={()=>setShowAdd(false)}>
+        <div className="modal-card" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
+          <h2>Add Employee</h2>
+          <div className="pay-fields">
+            <label><small>Name</small><input placeholder="Full name" value={newName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewName(e.target.value)} autoFocus /></label>
+            <label><small>Phone (optional)</small><input placeholder="055 123 4567" value={newPhone} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewPhone(e.target.value)} /></label>
+            <label><small>Role</small>
+              <select value={newRole[0]} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>newRole[1](e.target.value as AppRole)}>
+                <option value="manager">Manager</option>
+                <option value="cashier">Cashier</option>
+                <option value="waiter">Waiter</option>
+              </select>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={()=>setShowAdd(false)}>Cancel</button>
+            <button className="btn-primary" disabled={!newName.trim()} onClick={handleAdd}>Add Employee</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {editing && (
+      <div className="modal-overlay" onClick={()=>setEditing(null)}>
+        <div className="modal-card" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
+          <h2>Edit Employee</h2>
+          <div className="pay-fields">
+            <label><small>Name</small><input value={editName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setEditName(e.target.value)} autoFocus /></label>
+            <label><small>Phone</small><input value={editPhone} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setEditPhone(e.target.value)} /></label>
+            <label><small>Role</small>
+              <select value={editRole} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setEditRole(e.target.value as AppRole)}>
+                <option value="owner">Owner</option>
+                <option value="manager">Manager</option>
+                <option value="cashier">Cashier</option>
+                <option value="waiter">Waiter</option>
+              </select>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button>
+            <button className="btn-primary" disabled={!editName.trim()} onClick={handleSaveEdit}>Save Changes</button>
+          </div>
+        </div>
+      </div>
+    )}
   </PageBox>;
 }
 
@@ -2330,13 +2750,27 @@ function AccessDenied() {
 function SettingsPage() {  const { role, userName } = useAuth();
   const barOpen = useAppStore(s => s.barOpen);
   const toggleBarOpen = useAppStore(s => s.toggleBarOpen);
+  const { theme, setTheme } = useTheme();
   return <PageBox title="Settings" subtitle="Business preferences and integrations">
     <div className="settings-grid">
       <Panel title="Business"><label>Business name<input defaultValue="EMD Drinking Sports"/></label><label>Currency<input defaultValue="GHS"/></label><label>Location<input defaultValue="Ghana"/></label><label>Receipt footer<input defaultValue="Thank you for drinking with EMD! Come again."/></label></Panel>
       <Panel title="Customer Portal"><div className="setting-row"><div><b>Bar Status</b><small>Toggle to show customers if the bar is open</small></div><label className="football-toggle"><input type="checkbox" checked={barOpen} onChange={toggleBarOpen}/><i/></label></div><div className="setting-row"><div><b>Portal URL</b><small>Share this link with customers</small></div><a href="/portal" target="_blank" rel="noopener noreferrer" className="panel-link">/portal</a></div></Panel>
       <Panel title="Integrations"><div className="setting-row"><div><b>Eganow</b><small>MoMo + card gateway</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>AI Assistant</b><small>OpenAI Responses API</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>Supabase</b><small>Postgres + Auth</small></div><Status ok={false} label="Configure env"/></div></Panel>
       <Panel title="Current session"><div className="info-row"><span>Role</span><b>{roleLabels[role]}</b></div><div className="info-row"><span>User</span><b>{userName}</b></div><p className="muted-text">Switch roles from the top bar to test permissions.</p></Panel>
-      <Panel title="Appearance"><p>Black, white, gold and yellow luxury theme is active.</p><div className="swatches"><i/><i/><i/><i/></div></Panel>
+      <Panel title="Appearance">
+        <p className="muted-text" style={{marginBottom:12}}>Choose a theme for the dashboard</p>
+        <div className="theme-picker">
+          {themes.map(t => (
+            <button key={t.name} className={`theme-option ${theme===t.name?"active":""}`} onClick={()=>setTheme(t.name)}>
+              <div className="theme-preview" style={{background:t.colors[0]}}>
+                <span style={{background:t.colors[1]}} className="theme-preview-accent"></span>
+              </div>
+              <span className="theme-label">{t.label}</span>
+              {theme===t.name && <CheckCircle2 size={14} className="theme-check"/>}
+            </button>
+          ))}
+        </div>
+      </Panel>
     </div>
   </PageBox>;
 }

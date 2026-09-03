@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { AppRole } from "@/lib/types";
 import { hasPermission, type Permission } from "@/lib/auth/roles";
+import { useAppStore } from "@/lib/store";
 
 interface AuthUser {
   id: string;
@@ -216,7 +217,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isDemoMode]);
 
-  const can = useCallback((permission: Permission) => hasPermission(role, permission), [role]);
+  const can = useCallback((permission: Permission) => {
+    // Owner always has all permissions
+    if (role === "owner") return true;
+    // Check store-based custom permissions first, fall back to static defaults
+    try {
+      const storeState = useAppStore.getState();
+      const customPerms = storeState.rolePermissions?.[role];
+      if (customPerms !== undefined) {
+        return customPerms.includes(permission);
+      }
+    } catch { /* store not available in SSR */ }
+    return hasPermission(role, permission);
+  }, [role]);
 
   const uploadAvatar = useCallback(async (file: File): Promise<{ error: string | null }> => {
     if (!file.type.startsWith("image/")) return { error: "Please select an image file" };
