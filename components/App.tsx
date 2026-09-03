@@ -306,9 +306,12 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const updateWaiterCall = useAppStore(s => s.updateWaiterCall);
   const chatMessages = useAppStore(s => s.chatMessages);
   const sendChatMessage = useAppStore(s => s.sendChatMessage);
+  const customers = useAppStore(s => s.customers);
+  const sales = useAppStore(s => s.sales);
   const { user, userName } = useAuth();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [expandedTable, setExpandedTable] = useState<string | null>(null);
 
   const occupiedTables = tables.filter(t => t.occupied);
   const pendingCalls = waiterCalls.filter(c => c.status === "pending");
@@ -327,6 +330,10 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
     setReplyText("");
     setReplyTo(null);
   };
+
+  const getCustomer = (id?: string) => customers.find(c => c.id === id);
+  const tableOrders = (tableId: string) => customerOrders.filter(o => o.tableId === tableId);
+  const tableSales = (tableId: string) => sales.filter(s => s.tableId === tableId && !s.voided);
 
   return (
     <>
@@ -370,11 +377,15 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <div className="waiter-calls-list">
               {pendingCalls.map(call => {
                 const table = tables.find(t => t.id === call.tableId);
+                const customer = getCustomer(call.customerId);
                 return (
                   <div key={call.id} className="waiter-call-card">
+                    {customer?.avatarUrl
+                      ? <img src={customer.avatarUrl} alt={customer.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                      : <div className="avatar">{customer?.name?.[0] ?? "?"}</div>}
                     <div className="waiter-call-info">
-                      <strong>{table?.name ?? "Unknown table"}</strong>
-                      <small>{call.message} · {new Date(call.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small>
+                      <strong>{customer?.name ?? table?.name ?? "Unknown table"}</strong>
+                      <small>{call.message} · {table?.name} · {new Date(call.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small>
                     </div>
                     <div className="waiter-call-actions">
                       <button className="mini btn-primary" onClick={() => handleAcceptCall(call.id)}>Accept</button>
@@ -387,24 +398,102 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
           </div>
         )}
 
-        {/* My tables */}
+        {/* My tables with customer orders */}
         <div className="waiter-section">
           <h2><LayoutGrid size={18}/> My Tables</h2>
           <div className="waiter-tables-grid">
             {occupiedTables.length === 0 ? (
               <p className="muted-text">No active tables. Go to Tables to open one.</p>
-            ) : occupiedTables.map(t => (
-              <div key={t.id} className="waiter-table-card" onClick={() => onNavigate("Tables")}>
-                <div className="waiter-table-head">
-                  <strong>{t.name}</strong>
-                  <span className="waiter-table-bill">{money(t.bill)}</span>
+            ) : occupiedTables.map(t => {
+              const orders = tableOrders(t.id);
+              const pastSales = tableSales(t.id);
+              const tableCustomers = orders.map(o => getCustomer(o.customerId)).filter(Boolean);
+              const isExpanded = expandedTable === t.id;
+              return (
+                <div key={t.id} className={`waiter-table-card ${isExpanded?"expanded":""}`} onClick={() => setExpandedTable(isExpanded ? null : t.id)}>
+                  <div className="waiter-table-head">
+                    <strong>{t.name}</strong>
+                    <span className="waiter-table-bill">{money(t.bill)}</span>
+                  </div>
+                  <div className="waiter-table-meta">
+                    <small>{t.seats.length} {t.seats.length === 1 ? "person" : "people"}</small>
+                    {t.seats.filter(s => !s.paid).length > 0 && <span className="waiter-seat-badge">{t.seats.filter(s => !s.paid).length} unpaid</span>}
+                    {orders.length > 0 && <span className="waiter-order-badge">{orders.length} orders</span>}
+                  </div>
+                  {isExpanded && (
+                    <div className="waiter-table-detail" onClick={(e:React.MouseEvent)=>e.stopPropagation()}>
+                      {/* Customer avatars for this table */}
+                      {tableCustomers.length > 0 && (
+                        <div className="waiter-table-customers">
+                          {tableCustomers.map(c => c && (
+                            <div key={c.id} className="waiter-customer-mini">
+                              {c.avatarUrl
+                                ? <img src={c.avatarUrl} alt={c.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                                : <div className="avatar">{c.name[0]}</div>}
+                              <small>{c.name}</small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Current orders */}
+                      {orders.length > 0 && (
+                        <div className="waiter-orders-section">
+                          <small className="waiter-orders-label">Current Orders</small>
+                          {orders.map(o => {
+                            const c = getCustomer(o.customerId);
+                            const orderTotal = o.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+                            return (
+                              <div key={o.id} className="waiter-order-item">
+                                <div className="waiter-order-head">
+                                  {c?.avatarUrl
+                                    ? <img src={c.avatarUrl} alt={c.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                                    : <div className="avatar">{c?.name?.[0] ?? "?"}</div>}
+                                  <div>
+                                    <strong>{c?.name ?? "Walk-in"}</strong>
+                                    <small className={`order-status ${o.status}`}>{o.status}</small>
+                                  </div>
+                                  <span className="waiter-order-total">{money(orderTotal)}</span>
+                                </div>
+                                <div className="waiter-order-lines">
+                                  {o.lines.map((l, i) => <span key={i}>{l.quantity}× {l.name}</span>)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Past sales */}
+                      {pastSales.length > 0 && (
+                        <div className="waiter-orders-section">
+                          <small className="waiter-orders-label">Past Orders ({pastSales.length})</small>
+                          {pastSales.slice(0, 3).map(s => {
+                            const c = getCustomer(s.customerId);
+                            return (
+                              <div key={s.id} className="waiter-past-order">
+                                <div className="waiter-past-order-head">
+                                  {c?.avatarUrl
+                                    ? <img src={c.avatarUrl} alt={c.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                                    : <div className="avatar">{c?.name?.[0] ?? "?"}</div>}
+                                  <div>
+                                    <strong>{c?.name ?? "Walk-in"}</strong>
+                                    <small>{new Date(s.createdAt).toLocaleDateString()} · {s.paymentMethod}</small>
+                                  </div>
+                                  <span className="waiter-order-total">{money(s.total)}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {orders.length === 0 && pastSales.length === 0 && (
+                        <p className="muted-text" style={{fontSize:11,padding:"8px 0"}}>No orders yet for this table</p>
+                      )}
+                      <button className="mini btn-primary" onClick={() => onNavigate("Tables")}>Manage Table</button>
+                    </div>
+                  )}
                 </div>
-                <div className="waiter-table-meta">
-                  <small>{t.seats.length} {t.seats.length === 1 ? "person" : "people"}</small>
-                  {t.seats.filter(s => !s.paid).length > 0 && <span className="waiter-seat-badge">{t.seats.filter(s => !s.paid).length} unpaid</span>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -415,7 +504,7 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <div className="waiter-messages-list">
               {myMessages.slice(-5).map(m => {
                 const table = tables.find(t => t.id === m.tableId);
-                const customer = m.customerId ? useAppStore.getState().customers.find(c => c.id === m.customerId) : null;
+                const customer = getCustomer(m.customerId);
                 return (
                   <div key={m.id} className="waiter-message-card">
                     {customer?.avatarUrl

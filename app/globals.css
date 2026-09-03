@@ -515,6 +515,35 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .waiter-quick-btn:hover{border-color:var(--accent);transform:translateY(-2px)}
 .waiter-quick-btn svg{color:var(--accent)}
 .waiter-quick-btn span{font-size:12px;font-weight:700}
+/* Waiter table detail */
+.waiter-table-card.expanded{cursor:default}
+.waiter-table-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.waiter-table-customers{display:flex;gap:8px;flex-wrap:wrap}
+.waiter-customer-mini{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:50px}
+.waiter-customer-mini .avatar{width:28px;height:28px;font-size:11px}
+.waiter-customer-mini small{font-size:9px;color:var(--muted);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.waiter-orders-section{display:flex;flex-direction:column;gap:6px}
+.waiter-orders-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+.waiter-order-item{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px}
+.waiter-order-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.waiter-order-head .avatar{width:28px;height:28px;font-size:11px}
+.waiter-order-head>div{flex:1;display:flex;flex-direction:column}
+.waiter-order-head strong{font-size:12px}
+.order-status{font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;text-transform:uppercase;width:fit-content}
+.order-status.pending{background:rgba(239,68,68,.15);color:var(--red)}
+.order-status.preparing{background:rgba(249,195,23,.15);color:var(--yellow)}
+.order-status.served{background:rgba(59,130,246,.15);color:#3b82f6}
+.order-status.paid{background:rgba(34,197,94,.15);color:var(--green)}
+.waiter-order-total{font-size:12px;font-weight:700;color:var(--accent)}
+.waiter-order-lines{display:flex;flex-wrap:wrap;gap:4px}
+.waiter-order-lines span{font-size:10px;color:var(--muted);background:var(--surface-3);padding:2px 6px;border-radius:4px}
+.waiter-past-order{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px}
+.waiter-past-order-head{display:flex;align-items:center;gap:8px}
+.waiter-past-order-head .avatar{width:28px;height:28px;font-size:11px}
+.waiter-past-order-head>div{flex:1;display:flex;flex-direction:column}
+.waiter-past-order-head strong{font-size:12px}
+.waiter-past-order-head small{font-size:10px;color:var(--muted)}
+.waiter-order-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;background:rgba(249,195,23,.15);color:var(--yellow)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:grid;place-items:center;z-index:1000;padding:16px}
 .modal-card{background:#151718;border:1px solid var(--line);border-radius:14px;padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto}
 .modal-card h2{font-size:18px;margin-bottom:4px}
