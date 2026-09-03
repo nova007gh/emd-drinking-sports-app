@@ -58,7 +58,9 @@ export const tablesSeed: BarTable[] = Array.from({ length: 12 }, (_, i) => ({
   id: `t${i + 1}`,
   name: `Table ${i + 1}`,
   occupied: [0, 2, 4, 5, 8].includes(i),
-  bill: [120, 0, 80, 0, 132, 60, 0, 0, 200, 0, 0, 0][i]
+  bill: [120, 0, 80, 0, 132, 60, 0, 0, 200, 0, 0, 0][i],
+  seats: [],
+  creditLimit: 200
 }));
 
 export const giftCardsSeed: GiftCard[] = [

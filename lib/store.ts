@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, SeatTab, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking } from "./types";
 
 const PERSIST_KEY = "emd-drinking-sports-v4";
 
@@ -15,7 +15,7 @@ const PERSIST_KEY = "emd-drinking-sports-v4";
  * so everyone picks up the new catalogue; a match keeps the operator's real work
  * (sales, stock levels, customers, open tables) intact across refreshes.
  */
-const SEED_VERSION = 6;
+const SEED_VERSION = 7;
 
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {
@@ -54,6 +54,13 @@ interface AppState {
   toggleTable: (id: string) => void;
   transferTable: (fromId: string, toId: string) => void;
   splitBill: (tableId: string, lineIds: string[]) => string | null;
+  addSeat: (tableId: string, name?: string) => void;
+  removeSeat: (tableId: string, seatId: string) => void;
+  orderToSeat: (tableId: string, seatId: string, line: CartLine) => void;
+  closeSeat: (tableId: string, seatId: string) => void;
+  closeTable: (tableId: string) => void;
+  reopenTable: (tableId: string) => void;
+  closeTableWithDebt: (tableId: string, customerName: string, phone?: string) => void;
   addStock: (id: string, quantity: number) => void;
   adjustStock: (id: string, delta: number, reason: string) => void;
   addProduct: (product: Omit<Product, "id" | "active">) => void;
@@ -386,6 +393,105 @@ export const useAppStore = create<AppState>()(
         });
 
         return newSaleId;
+      },
+
+      addSeat: (tableId, name) => set((state) => ({
+        tables: state.tables.map((t) => {
+          if (t.id !== tableId) return t;
+          const seatNum = t.seats.length + 1;
+          const seat: SeatTab = {
+            id: crypto.randomUUID(),
+            name: name ?? `Person ${seatNum}`,
+            bill: 0,
+            paid: false,
+            items: []
+          };
+          return { ...t, seats: [...t.seats, seat], occupied: true };
+        })
+      })),
+
+      removeSeat: (tableId, seatId) => set((state) => ({
+        tables: state.tables.map((t) => {
+          if (t.id !== tableId) return t;
+          const seat = t.seats.find(s => s.id === seatId);
+          const seats = t.seats.filter(s => s.id !== seatId);
+          return { ...t, seats, bill: Math.max(0, t.bill - (seat?.bill ?? 0)) };
+        })
+      })),
+
+      orderToSeat: (tableId, seatId, line) => set((state) => ({
+        tables: state.tables.map((t) => {
+          if (t.id !== tableId) return t;
+          const seat = t.seats.find(s => s.id === seatId);
+          if (!seat) return t;
+          const lineTotal = line.unitPrice * line.quantity;
+          const seats = t.seats.map(s => s.id === seatId
+            ? { ...s, items: [...s.items, line], bill: s.bill + lineTotal }
+            : s);
+          return { ...t, seats, bill: t.bill + lineTotal, occupied: true };
+        })
+      })),
+
+      closeSeat: (tableId, seatId) => set((state) => ({
+        tables: state.tables.map((t) => {
+          if (t.id !== tableId) return t;
+          const seats = t.seats.map(s => s.id === seatId ? { ...s, paid: true } : s);
+          const allPaid = seats.every(s => s.paid);
+          return { ...t, seats, occupied: !allPaid };
+        })
+      })),
+
+      closeTable: (tableId) => set((state) => ({
+        tables: state.tables.map((t) => t.id === tableId
+          ? { ...t, occupied: false, bill: 0, seats: [], lastClosedAt: new Date().toISOString() }
+          : t)
+      })),
+
+      reopenTable: (tableId) => set((state) => ({
+        tables: state.tables.map((t) => t.id === tableId
+          ? { ...t, occupied: true, bill: 0, seats: t.seats.length > 0 ? t.seats : [], lastClosedAt: undefined }
+          : t)
+      })),
+
+      closeTableWithDebt: (tableId, customerName, phone) => {
+        const state = get();
+        const table = state.tables.find(t => t.id === tableId);
+        if (!table || table.bill <= 0) return;
+        // Find or create a customer for this debtor
+        let customer = state.customers.find(c => c.name.toLowerCase() === customerName.toLowerCase() || (phone && c.phone === phone));
+        let nextCustomers = state.customers;
+        if (!customer) {
+          customer = {
+            id: crypto.randomUUID(),
+            name: customerName,
+            phone: phone ?? "",
+            totalSpent: 0,
+            debt: table.bill,
+            walletBalance: 0,
+            loyaltyPoints: 0,
+            visitCount: 0
+          };
+          nextCustomers = [customer, ...state.customers];
+        } else {
+          nextCustomers = state.customers.map(c => c.id === customer!.id ? { ...c, debt: c.debt + table.bill } : c);
+        }
+        const debt: Debt = {
+          id: crypto.randomUUID(),
+          customerId: customer.id,
+          customerName,
+          originalAmount: table.bill,
+          outstandingAmount: table.bill,
+          note: `Table debt: ${table.name}`,
+          createdAt: new Date().toISOString(),
+          payments: []
+        };
+        set({
+          debts: [debt, ...state.debts],
+          customers: nextCustomers,
+          tables: state.tables.map((t) => t.id === tableId
+            ? { ...t, occupied: false, bill: 0, seats: [], lastClosedAt: new Date().toISOString() }
+            : t)
+        });
       },
 
       addStock: (id, quantity) => set((state) => {

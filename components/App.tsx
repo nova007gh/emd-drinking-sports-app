@@ -17,7 +17,7 @@ import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import { buildReceipt, browserPrinter } from "@/lib/receipt";
 import { useSyncIntegration } from "@/lib/hooks/useSyncIntegration";
 import { useInstallPrompt } from "@/lib/hooks/useInstallPrompt";
-import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory } from "@/lib/types";
+import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory, CartLine } from "@/lib/types";
 import type { Permission } from "@/lib/auth/roles";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -1270,16 +1270,31 @@ function CustomerOrdersPanel() {
 
 function Tables() {
   const tables = useAppStore(s=>s.tables);
-  const toggle = useAppStore(s=>s.toggleTable);
   const select = useAppStore(s=>s.selectTable);
   const transferTable = useAppStore(s=>s.transferTable);
   const splitBill = useAppStore(s=>s.splitBill);
   const sales = useAppStore(s=>s.sales);
   const selected = useAppStore(s=>s.selectedTableId);
+  const addSeat = useAppStore(s=>s.addSeat);
+  const removeSeat = useAppStore(s=>s.removeSeat);
+  const closeSeat = useAppStore(s=>s.closeSeat);
+  const closeTable = useAppStore(s=>s.closeTable);
+  const reopenTable = useAppStore(s=>s.reopenTable);
+  const closeTableWithDebt = useAppStore(s=>s.closeTableWithDebt);
+  const products = useAppStore(s=>s.products);
+  const orderToSeat = useAppStore(s=>s.orderToSeat);
+  const { can } = useAuth();
   const [transferFrom, setTransferFrom] = useState<string | null>(null);
   const [splitTableId, setSplitTableId] = useState<string | null>(null);
   const [splitLines, setSplitLines] = useState<Set<string>>(new Set());
   const [qrTableId, setQrTableId] = useState<string | null>(null);
+  const [expandedTable, setExpandedTable] = useState<string | null>(null);
+  const [activeSeat, setActiveSeat] = useState<string | null>(null);
+  const [seatProduct, setSeatProduct] = useState<string>("");
+  const [seatMode, setSeatMode] = useState<"bottle" | "shot">("bottle");
+  const [showCloseDebt, setShowCloseDebt] = useState<string | null>(null);
+  const [debtName, setDebtName] = useState("");
+  const [debtPhone, setDebtPhone] = useState("");
 
   const handleTableClick = (id: string) => {
     if (transferFrom) {
@@ -1289,7 +1304,8 @@ function Tables() {
       setTransferFrom(null);
     } else {
       select(id);
-      toggle(id);
+      setExpandedTable(expandedTable === id ? null : id);
+      setActiveSeat(null);
     }
   };
 
@@ -1320,18 +1336,130 @@ function Tables() {
     setSplitLines(new Set());
   };
 
+  const handleAddToSeat = (tableId: string, seatId: string) => {
+    const product = products.find(p => p.id === seatProduct);
+    if (!product) return;
+    const line: CartLine = {
+      id: crypto.randomUUID(),
+      productId: product.id,
+      name: product.name,
+      mode: seatMode,
+      unitPrice: seatMode === "shot" ? (product.shotPrice ?? product.bottlePrice) : product.bottlePrice,
+      quantity: 1
+    };
+    orderToSeat(tableId, seatId, line);
+    setSeatProduct("");
+  };
+
+  const handleCloseWithDebt = () => {
+    if (!showCloseDebt || !debtName.trim()) return;
+    closeTableWithDebt(showCloseDebt, debtName.trim(), debtPhone.trim() || undefined);
+    setShowCloseDebt(null);
+    setDebtName("");
+    setDebtPhone("");
+    setExpandedTable(null);
+  };
+
+  const expanded = expandedTable ? tables.find(t => t.id === expandedTable) : null;
+
   return <PageBox title="Tables" subtitle="Open, close and manage bar tables">
     {transferFrom && <div className="notice">Select a target table to transfer from {tables.find(t=>t.id===transferFrom)?.name}</div>}
     <div className="table-grid">{tables.map(t=><div key={t.id} role="button" tabIndex={0} className={`table-card ${t.occupied?"occupied":"available"} ${selected===t.id?"selected":""} ${transferFrom===t.id?"transfer-source":""}`} onClick={()=>handleTableClick(t.id)} onKeyDown={(e:React.KeyboardEvent)=>{if(e.key==="Enter"||e.key===" ")handleTableClick(t.id)}}>
       <LayoutGrid/><h3>{t.name}</h3><span>{t.occupied?"Occupied":"Available"}</span><b>{money(t.bill)}</b>
+      {t.occupied && t.seats.length > 0 && <small className="seat-count">{t.seats.length} {t.seats.length===1?"person":"people"}</small>}
       <div className="table-actions">
         <button className="mini qr-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setQrTableId(t.id)}}><Smartphone size={11}/> QR</button>
         {t.occupied && <button className="mini transfer-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setTransferFrom(t.id)}}><ArrowRightLeft size={11}/> Transfer</button>}
         {t.occupied && <button className="mini split-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();openSplit(t.id)}}><Scissors size={11}/> Split</button>}
+        {!t.occupied && t.lastClosedAt && can("sell") && <button className="mini reopen-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();reopenTable(t.id)}}><Play size={11}/> Reopen</button>}
       </div>
     </div>)}</div>
 
+    {expanded && expanded.occupied && (
+      <div className="table-detail-panel">
+        <div className="table-detail-head">
+          <h3>{expanded.name} — Individual Tabs</h3>
+          <div className="table-detail-actions">
+            {can("sell") && <button className="mini btn-primary" onClick={()=>addSeat(expanded.id)}><Plus size={12}/> Add Person</button>}
+            <button className="mini btn-primary" onClick={()=>{ if(confirm(`Close ${expanded.name}? Bill: ${money(expanded.bill)}`)) { closeTable(expanded.id); setExpandedTable(null); } }}>Close Table</button>
+            {expanded.bill > 0 && can("sell") && <button className="mini" onClick={()=>setShowCloseDebt(expanded.id)} title="Close table and record unpaid balance as debt">Close with Debt</button>}
+          </div>
+        </div>
+
+        {expanded.seats.length === 0 ? (
+          <div className="table-detail-empty">
+            <Users size={28} />
+            <p>No individual tabs yet. Add a person to start taking individual orders.</p>
+            {can("sell") && <button className="btn-primary" onClick={()=>addSeat(expanded.id)}><Plus size={14}/> Add First Person</button>}
+          </div>
+        ) : (
+          <div className="seat-grid">
+            {expanded.seats.map((seat) => (
+              <div key={seat.id} className={`seat-box ${seat.paid?"paid":""} ${activeSeat===seat.id?"active":""}`} onClick={()=>setActiveSeat(activeSeat===seat.id?null:seat.id)}>
+                <div className="seat-box-head">
+                  <span className="seat-glow"></span>
+                  <strong>{seat.name}</strong>
+                  {seat.paid && <span className="seat-paid-badge">PAID</span>}
+                </div>
+                <div className="seat-box-bill">{money(seat.bill)}</div>
+                {seat.items.length > 0 && (
+                  <div className="seat-items">
+                    {seat.items.map((item, idx) => (
+                      <div key={idx} className="seat-item">
+                        <span>{item.name}</span>
+                        <small>{item.mode} ×{item.quantity}</small>
+                        <span>{money(item.unitPrice * item.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activeSeat === seat.id && !seat.paid && can("sell") && (
+                  <div className="seat-order-panel" onClick={(e:React.MouseEvent)=>e.stopPropagation()}>
+                    <select value={seatProduct} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setSeatProduct(e.target.value)}>
+                      <option value="">Select product…</option>
+                      {products.filter(p=>p.active && p.stock>0).map(p=><option key={p.id} value={p.id}>{p.name} — {money(p.bottlePrice)}{p.shotPrice?` / ${money(p.shotPrice)}`:""}</option>)}
+                    </select>
+                    <div className="seat-mode-row">
+                      <button className={`mini ${seatMode==="bottle"?"active":""}`} onClick={()=>setSeatMode("bottle")}>Bottle</button>
+                      <button className={`mini ${seatMode==="shot"?"active":""}`} onClick={()=>setSeatMode("shot")} disabled={!products.find(p=>p.id===seatProduct)?.shotPrice}>Shot</button>
+                      <button className="mini btn-primary" disabled={!seatProduct} onClick={()=>handleAddToSeat(expanded.id, seat.id)}><Plus size={12}/> Add</button>
+                    </div>
+                    <button className="mini btn-primary seat-close-btn" onClick={()=>{ closeSeat(expanded.id, seat.id); setActiveSeat(null); }} disabled={seat.bill<=0}>Mark Paid</button>
+                    <button className="mini seat-remove-btn" onClick={()=>{ if(confirm(`Remove ${seat.name}?`)) removeSeat(expanded.id, seat.id); }}>Remove</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+
     <CustomerOrdersPanel />
+
+    {showCloseDebt && (
+      <div className="modal-overlay" onClick={()=>setShowCloseDebt(null)}>
+        <div className="modal-card" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
+          <h2>Close Table with Debt</h2>
+          <p className="modal-subtitle">Record the unpaid balance as a debt for later collection</p>
+          {(() => { const t = tables.find(t=>t.id===showCloseDebt); return t ? <p className="debt-table-bill">Outstanding bill: <strong>{money(t.bill)}</strong></p> : null; })()}
+          <div className="pay-fields">
+            <label>
+              <small>Customer Name</small>
+              <input placeholder="Customer name" value={debtName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDebtName(e.target.value)} autoFocus />
+            </label>
+            <label>
+              <small>Phone (optional)</small>
+              <input placeholder="055 123 4567" value={debtPhone} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDebtPhone(e.target.value)} />
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={()=>setShowCloseDebt(null)}>Cancel</button>
+            <button className="btn-primary" disabled={!debtName.trim()} onClick={handleCloseWithDebt}>Record Debt & Close</button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {qrTableId && (
       <div className="modal-overlay" onClick={()=>setQrTableId(null)}>

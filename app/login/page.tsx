@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Crown, Eye, EyeOff, Loader2, Lock, Mail, AlertCircle } from "lucide-react";
+import { Crown, Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, Banknote, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { useRouter } from "next/navigation";
 
@@ -35,6 +35,20 @@ export default function LoginPage() {
     setEmail(demoEmail);
     setPassword(demoPass);
     setError("");
+  };
+
+  const quickLogin = async (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setError("");
+    setBusy(true);
+    const result = await signIn(demoEmail, demoPass);
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      router.replace("/");
+    }
   };
 
   if (isLoading) {
@@ -102,17 +116,29 @@ export default function LoginPage() {
           <a className="auth-forgot" href="/forgot-password">Forgot password?</a>
         </form>
 
-        {isDemoMode && (
-          <div className="auth-demo">
-            <small>DEMO MODE — Supabase not configured. Quick fill:</small>
-            <div className="auth-demo-buttons">
-              <button type="button" onClick={() => fillDemo("owner@emd.com", "owner123")}>Owner</button>
-              <button type="button" onClick={() => fillDemo("manager@emd.com", "manager123")}>Manager</button>
-              <button type="button" onClick={() => fillDemo("cashier@emd.com", "cashier123")}>Cashier</button>
-              <button type="button" onClick={() => fillDemo("waiter@emd.com", "waiter123")}>Waiter</button>
-            </div>
+        <div className="auth-demo">
+          <small>QUICK LOGIN — Tap a role to sign in instantly</small>
+          <div className="auth-demo-buttons">
+            <button type="button" onClick={() => quickLogin("owner@emd.com", "owner123")} disabled={busy}>
+              <Crown size={14}/> Owner
+            </button>
+            <button type="button" onClick={() => quickLogin("manager@emd.com", "manager123")} disabled={busy}>
+              <ShieldCheck size={14}/> Manager
+            </button>
+            <button type="button" onClick={() => quickLogin("cashier@emd.com", "cashier123")} disabled={busy}>
+              <Banknote size={14}/> Cashier
+            </button>
+            <button type="button" onClick={() => quickLogin("waiter@emd.com", "waiter123")} disabled={busy}>
+              <Users size={14}/> Waiter
+            </button>
           </div>
-        )}
+          <div className="auth-demo-creds">
+            <span>owner@emd.com / owner123</span>
+            <span>manager@emd.com / manager123</span>
+            <span>cashier@emd.com / cashier123</span>
+            <span>waiter@emd.com / waiter123</span>
+          </div>
+        </div>
       </div>
     </div>
   );

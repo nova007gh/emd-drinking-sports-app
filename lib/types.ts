@@ -45,6 +45,14 @@ export interface Customer {
   visitCount: number;
 }
 
+export interface SeatTab {
+  id: string;
+  name: string;
+  bill: number;
+  paid: boolean;
+  items: CartLine[];
+}
+
 export interface BarTable {
   id: string;
   name: string;
@@ -52,6 +60,9 @@ export interface BarTable {
   bill: number;
   waiterId?: string;
   orderId?: string;
+  seats: SeatTab[];
+  creditLimit?: number;
+  lastClosedAt?: string;
 }
 
 export interface GiftCard {

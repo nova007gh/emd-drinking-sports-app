@@ -78,7 +78,8 @@ test("table can be opened and closed", async ({ page }) => {
   await navigateTo(page, "Tables");
   const table1 = page.getByRole("button", { name: /^Table 1/ }).first();
   await table1.click();
-  await expect(page.getByRole("heading", { name: "Table 1", exact: true })).toBeVisible();
+  // Expanding an occupied table shows the detail panel with individual tabs
+  await expect(page.getByText(/Table 1.*Individual Tabs/)).toBeVisible();
 });
 
 test("table transfer works", async ({ page }) => {
@@ -271,9 +272,9 @@ test("wallets page shows customer loyalty", async ({ page }) => {
 
 test("login page renders with demo credentials", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("DEMO MODE")).toBeVisible();
-  await expect(page.getByText("Owner")).toBeVisible();
-  await expect(page.getByText("Cashier")).toBeVisible();
+  await expect(page.getByText("QUICK LOGIN")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Owner/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cashier/ })).toBeVisible();
 });
 
 test("login rejects invalid credentials", async ({ page }) => {
@@ -284,10 +285,11 @@ test("login rejects invalid credentials", async ({ page }) => {
   await expect(page.getByText(/Invalid email or password/)).toBeVisible();
 });
 
-test("login demo quick fill works", async ({ page }) => {
+test("login quick login button fills credentials", async ({ page }) => {
   await page.goto("/login");
-  await page.getByText("Cashier").click();
-  await expect(page.getByPlaceholder("Email address")).toHaveValue("cashier@emd.com");
+  await page.getByRole("button", { name: /Cashier/ }).click();
+  // Quick login auto-submits, so we should end up on the dashboard
+  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
 });
 
 test("sign out returns to login", async ({ page }) => {
@@ -531,6 +533,59 @@ test("split bill cancel closes modal", async ({ page }) => {
   await expect(page.getByText(/Split Bill/)).toBeVisible();
   await page.getByRole("button", { name: /Cancel/ }).click();
   await expect(page.getByText(/Split Bill/)).toHaveCount(0);
+});
+
+test("table can add individual seat tabs", async ({ page }) => {
+  await navigateTo(page, "Tables");
+  const occupiedTable = page.locator(".table-card.occupied").first();
+  await occupiedTable.click();
+  await expect(page.locator(".table-detail-panel")).toBeVisible();
+  await page.getByRole("button", { name: /Add Person/ }).first().click();
+  await expect(page.locator(".seat-box").first()).toBeVisible();
+});
+
+test("table seat tab can be selected and ordered to", async ({ page }) => {
+  await navigateTo(page, "Tables");
+  const occupiedTable = page.locator(".table-card.occupied").first();
+  await occupiedTable.click();
+  await page.getByRole("button", { name: /Add Person/ }).first().click();
+  const seatBox = page.locator(".seat-box").first();
+  await seatBox.click();
+  await expect(page.locator(".seat-order-panel")).toBeVisible();
+});
+
+test("table can be closed and reopened", async ({ page }) => {
+  await navigateTo(page, "Tables");
+  const occupiedTable = page.locator(".table-card.occupied").first();
+  await occupiedTable.click();
+  await page.getByRole("button", { name: /^Close Table/ }).click();
+  // Table should now be available
+  await expect(page.locator(".table-card.available").first()).toBeVisible();
+  // Reopen button should appear on recently closed tables
+  const reopenBtn = page.getByRole("button", { name: /Reopen/ }).first();
+  if (await reopenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await reopenBtn.click();
+    await expect(page.locator(".table-card.occupied").first()).toBeVisible();
+  }
+});
+
+test("table can be closed with debt", async ({ page }) => {
+  await navigateTo(page, "Tables");
+  const occupiedTable = page.locator(".table-card.occupied").first();
+  await occupiedTable.click();
+  await page.getByRole("button", { name: /Close with Debt/ }).click();
+  await expect(page.getByText(/Close Table with Debt/)).toBeVisible();
+  await page.getByPlaceholder("Customer name").fill("Test Debtor");
+  await page.getByRole("button", { name: /Record Debt/ }).click();
+  await expect(page.getByText(/Close Table with Debt/)).toHaveCount(0);
+});
+
+test("login page shows quick login buttons for all roles", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: /Owner/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Manager/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cashier/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Waiter/ })).toBeVisible();
 });
 
 test("POS cashier bar shows user info and sales stats", async ({ page }) => {

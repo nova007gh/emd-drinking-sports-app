@@ -88,7 +88,9 @@ export function mapTableFromDb(row: SupabaseRow): BarTable {
     occupied: (row.occupied as boolean) ?? false,
     bill: row.bill_pesewas ? pesewasToGhanaCedis(row.bill_pesewas as number) : 0,
     waiterId: row.waiter_id as string | undefined,
-    orderId: row.order_id as string | undefined
+    orderId: row.order_id as string | undefined,
+    seats: [],
+    creditLimit: 200
   };
 }
 
