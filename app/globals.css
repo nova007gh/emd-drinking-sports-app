@@ -163,6 +163,7 @@ button{cursor:pointer}
 .search input{width:100%;border:0;outline:0;background:transparent;color:#fff}
 .owner{margin-left:auto;display:flex;align-items:center;gap:9px}.owner span{display:block;color:var(--muted);font-size:11px}.owner b{font-size:13px}
 .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,var(--yellow),#704e00);color:#080808;display:grid;place-items:center;font-weight:900;overflow:hidden}
+.avatar-img{object-fit:cover;border:2px solid var(--accent)}
 .avatar img{width:100%;height:100%;object-fit:cover}
 .content{padding:26px;max-width:1600px;margin:auto}
 .page-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:20px}.page-title p{font-size:10px;letter-spacing:2px;color:var(--yellow);font-weight:900;margin:0 0 5px}.page-title h1{font-size:30px;margin:0}.page-title span{color:var(--muted);font-size:13px}
@@ -357,6 +358,10 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .theme-preview-accent{width:20px;height:20px;border-radius:50%}
 .theme-label{font-size:11px;font-weight:700;color:var(--text)}
 .theme-check{color:var(--accent);position:absolute;top:8px;right:8px}
+/* AI name setting */
+.ai-name-row{display:flex;gap:8px;margin-top:8px}
+.ai-name-row input{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;outline:none}
+.ai-name-saved{display:flex;align-items:center;gap:4px;color:var(--green);font-size:11px;margin-top:6px}
 .bottom-nav{display:none}.mobile-only{display:none}.icon-btn{background:transparent;border:0;color:#fff}.sidebar-backdrop{display:none}
 .dot.offline{background:var(--red);box-shadow:0 0 10px var(--red)}
 .connection-indicator{color:var(--muted);display:flex;align-items:center}
@@ -1018,6 +1023,56 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-report-item p{font-size:12px;color:var(--muted);margin:4px 0}
 .portal-report-item small{font-size:10px;color:var(--muted-dim)}
 .portal-report-resolution{display:flex;align-items:center;gap:6px;margin-top:6px;padding:8px;background:rgba(34,197,94,.08);border-radius:8px;font-size:11px;color:var(--green)}
+/* Portal profile */
+.portal-avatar-btn{border:none;background:none;cursor:pointer;padding:0;border-radius:50%;overflow:hidden}
+.portal-avatar-img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--yellow)}
+.portal-points-badge{display:inline-flex;align-items:center;gap:3px;color:var(--yellow);font-size:10px;font-weight:700;background:rgba(249,195,23,.1);padding:2px 6px;border-radius:999px;margin-top:2px}
+.portal-profile-card{display:flex;align-items:center;gap:16px;background:#151718;border:1px solid #3d3208;border-radius:14px;padding:20px;margin-bottom:16px}
+.portal-profile-avatar-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.portal-profile-avatar-img{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)}
+.portal-profile-avatar-placeholder{width:80px;height:80px;border-radius:50%;background:var(--yellow);color:#0a0a0a;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;border:3px solid var(--yellow)}
+.portal-profile-camera{position:absolute;bottom:0;right:0;background:var(--yellow);color:#0a0a0a;border:2px solid #151718;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--transition)}
+.portal-profile-camera:hover{filter:brightness(1.1)}
+.portal-profile-camera:disabled{opacity:.5}
+.portal-profile-info{flex:1}
+.portal-profile-info strong{font-size:18px;display:block}
+.portal-profile-info small{font-size:12px;color:var(--muted)}
+.portal-profile-stats{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.portal-profile-stats div{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.portal-profile-stats div svg{color:var(--yellow)}
+.portal-profile-form{display:flex;flex-direction:column;gap:12px}
+.portal-profile-form label{display:flex;flex-direction:column;gap:4px}
+.portal-profile-form label small{font-size:11px;color:var(--muted)}
+.portal-profile-form input{background:#151718;border:1px solid #3d3208;color:#fff;border-radius:10px;padding:10px;font-size:13px;outline:none}
+/* Portal rewards */
+.portal-rewards-balance{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(249,195,23,.08),rgba(249,195,23,.02));border:1px solid rgba(249,195,23,.2);border-radius:14px;padding:20px;margin-bottom:16px}
+.portal-rewards-balance svg{color:var(--yellow)}
+.portal-rewards-balance strong{font-size:32px;display:block;color:var(--yellow)}
+.portal-rewards-balance small{font-size:11px;color:var(--muted)}
+.portal-rewards-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px;text-align:center;color:var(--muted)}
+.portal-rewards-empty svg{color:var(--yellow);opacity:.5}
+.portal-rewards-empty small{font-size:10px}
+.portal-rewards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.portal-reward-card{background:#151718;border:1px solid #3d3208;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.portal-reward-info strong{font-size:13px;display:block}
+.portal-reward-info small{font-size:10px;color:var(--muted)}
+.portal-reward-cost{display:flex;align-items:center;gap:4px;color:var(--yellow);font-size:13px;font-weight:700}
+/* Portal AI */
+.portal-ai-chat{background:#151718;border:1px solid #3d3208;border-radius:14px;padding:14px;margin-bottom:14px}
+.portal-ai-messages{display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto;margin-bottom:12px}
+.portal-ai-bubble{display:flex;align-items:flex-start;gap:6px;max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.portal-ai-bubble.ai{background:rgba(249,195,23,.08);border:1px solid rgba(249,195,23,.15);border-top-left-radius:4px;align-self:flex-start}
+.portal-ai-bubble.me{background:var(--yellow);color:#0a0a0a;border-top-right-radius:4px;align-self:flex-end}
+.portal-ai-icon{color:var(--yellow);flex-shrink:0;margin-top:2px}
+.portal-ai-input{display:flex;gap:8px}
+.portal-ai-input input{flex:1;background:#0a0a0a;border:1px solid #3d3208;color:#fff;border-radius:10px;padding:10px 14px;font-size:13px;outline:none}
+.portal-ai-input button{background:var(--yellow);color:#0a0a0a;border:none;border-radius:10px;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
+.portal-ai-input button:hover:not(:disabled){filter:brightness(1.1)}
+.portal-ai-input button:disabled{opacity:.5;cursor:not-allowed}
+.portal-ai-suggestions{display:flex;flex-direction:column;gap:6px}
+.portal-ai-suggestions small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.portal-ai-suggestions button{background:rgba(249,195,23,.05);border:1px solid rgba(249,195,23,.15);color:var(--yellow);border-radius:8px;padding:8px 12px;font-size:12px;text-align:left;cursor:pointer;transition:var(--transition)}
+.portal-ai-suggestions button:hover{background:rgba(249,195,23,.1)}
 .portal-waiters-list{display:flex;flex-direction:column;gap:10px}
 .portal-waiter-hint{font-size:10px;color:var(--muted)}
 /* Customer orders panel (staff side) */

@@ -415,10 +415,14 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <div className="waiter-messages-list">
               {myMessages.slice(-5).map(m => {
                 const table = tables.find(t => t.id === m.tableId);
+                const customer = m.customerId ? useAppStore.getState().customers.find(c => c.id === m.customerId) : null;
                 return (
                   <div key={m.id} className="waiter-message-card">
+                    {customer?.avatarUrl
+                      ? <img src={customer.avatarUrl} alt={customer.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                      : <div className="avatar">{customer?.name?.[0] ?? "?"}</div>}
                     <div className="waiter-message-info">
-                      <strong>{table?.name ?? "Table"}</strong>
+                      <strong>{customer?.name ?? table?.name ?? "Table"}</strong>
                       <small>{m.text}</small>
                       <em>{new Date(m.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</em>
                     </div>
@@ -1915,7 +1919,9 @@ function Customers() {
     return <PageBox title="Customer Detail" subtitle={selectedCustomer.name}>
       <button className="secondary" style={{marginBottom:14}} onClick={()=>setSelectedId(null)}><ArrowUpRight size={14}/> Back to customers</button>
       <div className="customer-detail-header">
-        <div className="avatar large">{selectedCustomer.name[0]}</div>
+        {selectedCustomer.avatarUrl
+          ? <img src={selectedCustomer.avatarUrl} alt={selectedCustomer.name} className="avatar large avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+          : <div className="avatar large">{selectedCustomer.name[0]}</div>}
         <div>
           <h2>{selectedCustomer.name}</h2>
           <small>{selectedCustomer.phone}</small>
@@ -2208,9 +2214,10 @@ function Reports() {
 
 function AIAssistant() {
   const products=useAppStore(s=>s.products); const customers=useAppStore(s=>s.customers); const sales=useAppStore(s=>s.sales);
+  const aiName=useAppStore(s=>s.aiName);
   const insights=businessInsights(products,customers,sales);
   const [question,setQuestion]=useState(""); const [messages,setMessages]=useState<Array<{who:"me"|"ai";text:string}>>([
-    {who:"ai", text:`I can analyse EMD sales, stock and debts. Right now ${insights.topDebtor?.name ?? "no customer"} has the highest debt.`}
+    {who:"ai", text:`I'm ${aiName}. I can analyse EMD sales, stock and debts. Right now ${insights.topDebtor?.name ?? "no customer"} has the highest debt.`}
   ]);
   const [busy,setBusy]=useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -2671,7 +2678,7 @@ function Staff() {
 
     <div className="card-grid">{staff.map(s=>
       <article className={`info-card ${s.active?"":"suspended"}`} key={s.id}>
-        <div className="avatar">{s.name[0]}</div>
+        {s.avatarUrl ? <img src={s.avatarUrl} alt={s.name} className="avatar avatar-img" /* eslint-disable-line @next/next/no-img-element */ /> : <div className="avatar">{s.name[0]}</div>}
         <h3>{s.name}</h3>
         <small>{roleLabels[s.role]}</small>
         {s.phone && <small>{s.phone}</small>}
@@ -2750,12 +2757,30 @@ function AccessDenied() {
 function SettingsPage() {  const { role, userName } = useAuth();
   const barOpen = useAppStore(s => s.barOpen);
   const toggleBarOpen = useAppStore(s => s.toggleBarOpen);
+  const aiName = useAppStore(s => s.aiName);
+  const setAiName = useAppStore(s => s.setAiName);
   const { theme, setTheme } = useTheme();
+  const [aiNameInput, setAiNameInput] = useState(aiName);
+  const [aiNameSaved, setAiNameSaved] = useState(false);
+  const handleSaveAiName = () => {
+    setAiName(aiNameInput.trim() || "EMD Assistant");
+    setAiNameSaved(true);
+    setTimeout(() => setAiNameSaved(false), 3000);
+  };
   return <PageBox title="Settings" subtitle="Business preferences and integrations">
     <div className="settings-grid">
       <Panel title="Business"><label>Business name<input defaultValue="EMD Drinking Sports"/></label><label>Currency<input defaultValue="GHS"/></label><label>Location<input defaultValue="Ghana"/></label><label>Receipt footer<input defaultValue="Thank you for drinking with EMD! Come again."/></label></Panel>
       <Panel title="Customer Portal"><div className="setting-row"><div><b>Bar Status</b><small>Toggle to show customers if the bar is open</small></div><label className="football-toggle"><input type="checkbox" checked={barOpen} onChange={toggleBarOpen}/><i/></label></div><div className="setting-row"><div><b>Portal URL</b><small>Share this link with customers</small></div><a href="/portal" target="_blank" rel="noopener noreferrer" className="panel-link">/portal</a></div></Panel>
-      <Panel title="Integrations"><div className="setting-row"><div><b>Eganow</b><small>MoMo + card gateway</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>AI Assistant</b><small>OpenAI Responses API</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>Supabase</b><small>Postgres + Auth</small></div><Status ok={false} label="Configure env"/></div></Panel>
+      <Panel title="AI Assistant">
+        <div className="setting-row"><div><b>AI Name</b><small>Name shown to customers in the portal AI chat</small></div></div>
+        <div className="ai-name-row">
+          <input value={aiNameInput} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setAiNameInput(e.target.value)} placeholder="e.g. EMD Assistant, Kofi Bot, Bar Buddy" />
+          <button className="btn-primary" onClick={handleSaveAiName}>Save</button>
+        </div>
+        {aiNameSaved && <small className="ai-name-saved"><CheckCircle2 size={12}/> AI name updated to "{aiName}"</small>}
+        <div className="setting-row" style={{marginTop:12}}><div><b>OpenAI</b><small>Responses API for natural language</small></div><Status ok={false} label="Configure env"/></div>
+      </Panel>
+      <Panel title="Integrations"><div className="setting-row"><div><b>Eganow</b><small>MoMo + card gateway</small></div><Status ok={false} label="Configure env"/></div><div className="setting-row"><div><b>Supabase</b><small>Postgres + Auth</small></div><Status ok={false} label="Configure env"/></div></Panel>
       <Panel title="Current session"><div className="info-row"><span>Role</span><b>{roleLabels[role]}</b></div><div className="info-row"><span>User</span><b>{userName}</b></div><p className="muted-text">Switch roles from the top bar to test permissions.</p></Panel>
       <Panel title="Appearance">
         <p className="muted-text" style={{marginBottom:12}}>Choose a theme for the dashboard</p>

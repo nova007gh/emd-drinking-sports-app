@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Minus, Clock, Users, Trophy, Calendar,
   CheckCircle2, AlertTriangle, Phone, MessageSquare, Bell, MapPin,
   Star, Wallet, Receipt, ArrowRight, Home, ShoppingBag, Utensils,
-  Loader2, PartyPopper, Smartphone, CircleDollarSign, CreditCard
+  Loader2, PartyPopper, Smartphone, CircleDollarSign, CreditCard, Bot, Camera, Send
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
@@ -14,7 +14,7 @@ import { InventoryError } from "@/lib/domain/inventory";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
-type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet" | "report";
+type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet" | "report" | "profile" | "rewards" | "ai";
 
 const PORTAL_SESSION_KEY = "emd-portal-customer-id";
 
@@ -101,10 +101,15 @@ export default function CustomerPortal() {
           </div>
           {customer && (
             <div className="portal-welcome">
-              <div className="portal-avatar">{customer.name[0]}</div>
+              <button className="portal-avatar-btn" onClick={() => setTab("profile")} title="Edit profile">
+                {customer.avatarUrl
+                  ? <img src={customer.avatarUrl} alt={customer.name} className="portal-avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+                  : <div className="portal-avatar">{customer.name[0]}</div>}
+              </button>
               <div className="portal-welcome-info">
                 <strong>Welcome, {customer.name.split(" ")[0]}</strong>
                 <span>{customer.phone}</span>
+                {customer.loyaltyPoints > 0 && <small className="portal-points-badge"><Star size={10}/> {customer.loyaltyPoints} pts</small>}
               </div>
               <button className="portal-wallet" onClick={() => setTab("wallet")}>
                 <Wallet size={14} />
@@ -129,7 +134,10 @@ export default function CustomerPortal() {
             ["orders", "My Orders", Receipt],
             ["waiter", "Waiter", Bell],
             ["wallet", "Wallet", Wallet],
-            ["report", "Report", AlertTriangle]
+            ["rewards", "Rewards", Star],
+            ["ai", "AI Assistant", Bot],
+            ["report", "Report", AlertTriangle],
+            ["profile", "Profile", Users]
           ] as Array<[PortalTab, string, typeof Home]>).map(([key, label, Icon]) => (
             <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
               <Icon size={18} />
@@ -147,6 +155,9 @@ export default function CustomerPortal() {
           {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
           {tab === "wallet" && <PortalWallet customerId={customerId} />}
           {tab === "report" && <PortalReport customerId={customerId} customerName={customer?.name ?? ""} selectedTableId={selectedTableId} />}
+          {tab === "profile" && <PortalProfile customerId={customerId} />}
+          {tab === "rewards" && <PortalRewards customerId={customerId} />}
+          {tab === "ai" && <PortalAI customerId={customerId} />}
         </div>
       </div>
     </div>
@@ -1030,6 +1041,275 @@ function PortalReport({ customerId, customerName, selectedTableId }: { customerI
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function PortalProfile({ customerId }: { customerId: string }) {
+  const customers = useAppStore(s => s.customers);
+  const updateCustomerProfile = useAppStore(s => s.updateCustomerProfile);
+  const customer = customers.find(c => c.id === customerId);
+  const [name, setName] = useState(customer?.name ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  if (!customer) return null;
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    updateCustomerProfile(customerId, { name: name.trim(), phone: phone.trim() });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    if (file.size > 2 * 1024 * 1024) { alert("Image must be under 2MB"); return; }
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateCustomerProfile(customerId, { avatarUrl: reader.result as string });
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="portal-section">
+      <h2 className="portal-title">My Profile</h2>
+      <p className="portal-subtitle">Update your details and profile picture</p>
+
+      {saved && <div className="portal-success-banner"><CheckCircle2 size={18}/><span>Profile updated successfully!</span></div>}
+
+      <div className="portal-profile-card">
+        <div className="portal-profile-avatar-wrap">
+          {customer.avatarUrl
+            ? <img src={customer.avatarUrl} alt={customer.name} className="portal-profile-avatar-img" /* eslint-disable-line @next/next/no-img-element */ />
+            : <div className="portal-profile-avatar-placeholder">{customer.name[0]}</div>}
+          <button className="portal-profile-camera" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Change photo">
+            {uploading ? <Loader2 size={16} className="auth-spinner"/> : <Camera size={16}/>}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatar} style={{display:"none"}} />
+        </div>
+        <div className="portal-profile-info">
+          <strong>{customer.name}</strong>
+          <small>{customer.phone}</small>
+          <div className="portal-profile-stats">
+            <div><Star size={12}/><span>{customer.loyaltyPoints} pts</span></div>
+            <div><Wallet size={12}/><span>{money(customer.walletBalance)}</span></div>
+            <div><Receipt size={12}/><span>{customer.visitCount} visits</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="portal-profile-form">
+        <label>
+          <small>Name</small>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+        </label>
+        <label>
+          <small>Phone</small>
+          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="055 123 4567" />
+        </label>
+        <button className="portal-btn-primary" disabled={!name.trim()} onClick={handleSave}>
+          <CheckCircle2 size={16}/> Save Changes
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PortalRewards({ customerId }: { customerId: string }) {
+  const customers = useAppStore(s => s.customers);
+  const products = useAppStore(s => s.products);
+  const redeemPointsForProduct = useAppStore(s => s.redeemPointsForProduct);
+  const customer = customers.find(c => c.id === customerId);
+  const [redeemed, setRedeemed] = useState<string | null>(null);
+
+  if (!customer) return null;
+
+  // Points cost: 10 points per GHS 1 of product value
+  const redeemableProducts = products.filter(p => p.active && p.stock > 0)
+    .map(p => ({ ...p, pointsCost: Math.ceil(p.bottlePrice * 10) }))
+    .filter(p => p.pointsCost <= customer.loyaltyPoints);
+
+  const handleRedeem = (productId: string, pointsCost: number, name: string) => {
+    if (!confirm(`Redeem ${pointsCost} points for ${name}?`)) return;
+    if (redeemPointsForProduct(customerId, productId, pointsCost)) {
+      setRedeemed(name);
+      setTimeout(() => setRedeemed(null), 4000);
+    } else {
+      alert("Unable to redeem. Please try again.");
+    }
+  };
+
+  return (
+    <div className="portal-section">
+      <h2 className="portal-title">Rewards</h2>
+      <p className="portal-subtitle">Redeem your loyalty points for drinks and food</p>
+
+      <div className="portal-rewards-balance">
+        <Star size={28} />
+        <div>
+          <strong>{customer.loyaltyPoints}</strong>
+          <small>loyalty points available</small>
+        </div>
+      </div>
+
+      {redeemed && <div className="portal-success-banner"><CheckCircle2 size={18}/><span>Successfully redeemed {redeemed}! Enjoy.</span></div>}
+
+      {customer.loyaltyPoints < 50 ? (
+        <div className="portal-rewards-empty">
+          <Star size={32} />
+          <p>You need at least 50 points to start redeeming rewards. Keep ordering to earn more points!</p>
+          <small>You earn 1 point for every GHS 10 spent</small>
+        </div>
+      ) : redeemableProducts.length === 0 ? (
+        <div className="portal-rewards-empty">
+          <Star size={32} />
+          <p>No items available for redemption right now. Check back later!</p>
+        </div>
+      ) : (
+        <div className="portal-rewards-grid">
+          {redeemableProducts.map(p => (
+            <div key={p.id} className="portal-reward-card">
+              <div className="portal-reward-info">
+                <strong>{p.name}</strong>
+                <small>{p.category}</small>
+              </div>
+              <div className="portal-reward-cost">
+                <Star size={14} />
+                <span>{p.pointsCost} pts</span>
+              </div>
+              <button className="portal-btn-primary" onClick={() => handleRedeem(p.id, p.pointsCost, p.name)}>
+                Redeem
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PortalAI({ customerId }: { customerId: string }) {
+  const aiName = useAppStore(s => s.aiName);
+  const products = useAppStore(s => s.products);
+  const customers = useAppStore(s => s.customers);
+  const customer = customers.find(c => c.id === customerId);
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<Array<{ who: "me" | "ai"; text: string }>>([
+    { who: "ai", text: `Hi! I'm ${aiName}. I can help you with menu recommendations, event info, and answer questions about EMD Bar & Lounge. What would you like to know?` }
+  ]);
+  const [busy, setBusy] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy]);
+
+  const localAnswer = (q: string): string => {
+    const s = q.toLowerCase();
+    if (s.includes("beer") || s.includes("drink") || s.includes("recommend")) {
+      const beers = products.filter(p => p.category === "Beer" && p.active);
+      if (beers.length > 0) return `I'd recommend trying ${beers[0].name} at ${money(beers[0].bottlePrice)}. It's one of our popular beers!`;
+      return "We have a great selection of drinks. Check the Menu tab for what's available!";
+    }
+    if (s.includes("price") || s.includes("cost") || s.includes("how much")) {
+      const cheapest = products.filter(p => p.active).sort((a, b) => a.bottlePrice - b.bottlePrice)[0];
+      return `Our prices start from ${money(cheapest?.bottlePrice ?? 0)}. Check the Menu tab for full pricing!`;
+    }
+    if (s.includes("point") || s.includes("reward") || s.includes("loyalty")) {
+      return `You have ${customer?.loyaltyPoints ?? 0} loyalty points. You earn 1 point for every GHS 10 spent. Visit the Rewards tab to redeem points for free items!`;
+    }
+    if (s.includes("wallet") || s.includes("balance")) {
+      return `Your wallet balance is ${money(customer?.walletBalance ?? 0)}. You can top up at the bar or use it to pay for orders.`;
+    }
+    if (s.includes("event") || s.includes("match") || s.includes("party")) {
+      return "Check the Events tab for upcoming matches, live music, and parties at EMD!";
+    }
+    if (s.includes("table") || s.includes("reserve")) {
+      return "Go to the Tables tab to see available tables and reserve one!";
+    }
+    if (s.includes("waiter") || s.includes("service") || s.includes("call")) {
+      return "Go to the Waiter tab to call a waiter or send a message to your server!";
+    }
+    if (s.includes("order") || s.includes("food")) {
+      return "Browse our Menu tab to place an order directly to your table!";
+    }
+    return `I'm ${aiName}, your virtual assistant. I can help with menu recommendations, rewards, events, and more. What would you like to know?`;
+  };
+
+  const handleSend = async () => {
+    if (!question.trim() || busy) return;
+    const q = question.trim();
+    setMessages(prev => [...prev, { who: "me", text: q }]);
+    setQuestion("");
+    setBusy(true);
+
+    // Try the server AI first, fall back to local
+    try {
+      const snapshot = {
+        customer: { name: customer?.name, points: customer?.loyaltyPoints, wallet: customer?.walletBalance },
+        products: products.filter(p => p.active).slice(0, 20).map(p => ({ name: p.name, price: p.bottlePrice, category: p.category })),
+        totalProducts: products.filter(p => p.active).length
+      };
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, snapshot, customerMode: true })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, { who: "ai", text: data.text }]);
+      } else {
+        setMessages(prev => [...prev, { who: "ai", text: localAnswer(q) }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { who: "ai", text: localAnswer(q) }]);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="portal-section">
+      <h2 className="portal-title">{aiName}</h2>
+      <p className="portal-subtitle">Your AI assistant for recommendations and questions</p>
+
+      <div className="portal-ai-chat">
+        <div className="portal-ai-messages">
+          {messages.map((m, i) => (
+            <div key={i} className={`portal-ai-bubble ${m.who}`}>
+              {m.who === "ai" && <Bot size={14} className="portal-ai-icon" />}
+              <span>{m.text}</span>
+            </div>
+          ))}
+          {busy && <div className="portal-ai-bubble ai"><Bot size={14} className="portal-ai-icon" /><Loader2 size={14} className="auth-spinner" /></div>}
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="portal-ai-input">
+          <input
+            placeholder={`Ask ${aiName}...`}
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSend()}
+            disabled={busy}
+          />
+          <button onClick={handleSend} disabled={busy || !question.trim()}><Send size={18} /></button>
+        </div>
+      </div>
+
+      <div className="portal-ai-suggestions">
+        <small>Try asking:</small>
+        <button onClick={() => { setQuestion("What beer do you recommend?"); }}>Recommend a beer</button>
+        <button onClick={() => { setQuestion("How many points do I have?"); }}>My points</button>
+        <button onClick={() => { setQuestion("What events are coming up?"); }}>Upcoming events</button>
+        <button onClick={() => { setQuestion("What's the cheapest drink?"); }}>Cheapest drink</button>
+      </div>
     </div>
   );
 }

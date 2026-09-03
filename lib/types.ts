@@ -7,7 +7,7 @@ export type GiftCardStatus = "active" | "redeemed" | "disabled" | "expired";
 export type AppRole = "owner" | "manager" | "cashier" | "waiter";
 export type StockMovementType =
   | "purchase" | "sale_bottle" | "open_for_shots"
-  | "adjustment_in" | "adjustment_out" | "waste";
+  | "adjustment_in" | "adjustment_out" | "waste" | "redemption";
 
 export interface Product {
   id: string;
@@ -43,6 +43,7 @@ export interface Customer {
   walletBalance: number;
   lastPurchaseDate?: string;
   visitCount: number;
+  avatarUrl?: string;
 }
 
 export interface SeatTab {
@@ -147,6 +148,7 @@ export interface StaffMember {
   phone?: string;
   salesCount: number;
   ordersHandled: number;
+  avatarUrl?: string;
 }
 
 export type EventCategory = "sports" | "music" | "nightclub" | "games" | "other";

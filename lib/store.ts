@@ -91,6 +91,10 @@ interface AppState {
   topUpWallet: (customerId: string, amount: number) => void;
   spendWallet: (customerId: string, amount: number) => boolean;
   spendLoyaltyPoints: (customerId: string, points: number) => boolean;
+  updateCustomerProfile: (customerId: string, updates: { name?: string; phone?: string; avatarUrl?: string }) => void;
+  redeemPointsForProduct: (customerId: string, productId: string, pointsCost: number) => boolean;
+  aiName: string;
+  setAiName: (name: string) => void;
   // Customer portal
   barOpen: boolean;
   toggleBarOpen: () => void;
@@ -195,6 +199,7 @@ export const useAppStore = create<AppState>()(
         waiter: ["sell","manage_tables","manage_customers"]
       },
       customerReports: [],
+      aiName: "EMD Assistant",
 
       addToCart: (productId, mode) => {
         const product = get().products.find((p) => p.id === productId);
@@ -783,6 +788,39 @@ export const useAppStore = create<AppState>()(
         }));
         return true;
       },
+
+      updateCustomerProfile: (customerId, updates) => set((state) => ({
+        customers: state.customers.map(c => c.id === customerId ? { ...c, ...updates } : c)
+      })),
+
+      redeemPointsForProduct: (customerId, productId, pointsCost) => {
+        const state = get();
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer || customer.loyaltyPoints < pointsCost) return false;
+        const product = state.products.find(p => p.id === productId);
+        if (!product || product.stock <= 0) return false;
+        set({
+          customers: state.customers.map(c => c.id === customerId
+            ? { ...c, loyaltyPoints: c.loyaltyPoints - pointsCost }
+            : c),
+          products: state.products.map(p => p.id === productId
+            ? { ...p, stock: p.stock - 1 }
+            : p),
+          stockMovements: [{
+            id: crypto.randomUUID(),
+            productId,
+            productName: product.name,
+            movementType: "redemption",
+            bottleDelta: -1,
+            shotDelta: 0,
+            reason: `Redeemed by ${customer.name} for ${pointsCost} points`,
+            createdAt: new Date().toISOString()
+          }, ...state.stockMovements]
+        });
+        return true;
+      },
+
+      setAiName: (name) => set({ aiName: name || "EMD Assistant" }),
 
       toggleBarOpen: () => set((s) => ({ barOpen: !s.barOpen })),
 
