@@ -10,6 +10,7 @@ export class RepositoryError extends Error {
 }
 
 export function isSupabaseConfigured(): boolean {
+  if (process.env.NEXT_PUBLIC_FORCE_DEMO === "true") return false;
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 

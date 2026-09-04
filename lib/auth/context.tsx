@@ -44,6 +44,7 @@ const demoUsers: Array<{ email: string; password: string; name: string; role: Ap
 ];
 
 function getSupabaseConfigured(): boolean {
+  if (process.env.NEXT_PUBLIC_FORCE_DEMO === "true") return false;
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 
