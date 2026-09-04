@@ -22,8 +22,12 @@ export function useTheme() {
       if (stored && themes.some(t => t.name === stored)) {
         setThemeState(stored);
         applyTheme(stored);
+      } else {
+        applyTheme("black");
       }
-    } catch {}
+    } catch {
+      applyTheme("black");
+    }
   }, []);
 
   const setTheme = useCallback((name: ThemeName) => {
