@@ -112,13 +112,13 @@ test("partial debt payment reduces outstanding", async ({ page }) => {
 
 test("gift card creation works", async ({ page }) => {
   await navigateTo(page, "Gift Cards");
-  await page.getByRole("button", { name: /Create card/ }).click();
+  await page.getByRole("button", { name: /Buy Gift Card/ }).click();
   await expect(page.getByText(/Created EMD-/)).toBeVisible();
 });
 
 test("gift card partial redemption works", async ({ page }) => {
   await navigateTo(page, "Gift Cards");
-  await page.getByRole("button", { name: /Create card/ }).click();
+  await page.getByRole("button", { name: /Buy Gift Card/ }).click();
   const createdText = await page.getByText(/Created EMD-/).textContent();
   const code = createdText?.match(/EMD-[A-Z0-9]+-[A-Z0-9]+/)?.[0] ?? "";
   await page.getByPlaceholder("Gift card code").fill(code);
@@ -128,7 +128,7 @@ test("gift card partial redemption works", async ({ page }) => {
 
 test("insufficient gift card balance is rejected", async ({ page }) => {
   await navigateTo(page, "Gift Cards");
-  await page.getByRole("button", { name: /Create card/ }).click();
+  await page.getByRole("button", { name: /Buy Gift Card/ }).click();
   const createdText = await page.getByText(/Created EMD-/).textContent();
   const code = createdText?.match(/EMD-[A-Z0-9]+-[A-Z0-9]+/)?.[0] ?? "";
   await page.getByPlaceholder("Gift card code").fill(code);
@@ -176,6 +176,12 @@ test("customer creation works", async ({ page }) => {
 test("reports page loads with charts", async ({ page }) => {
   await navigateTo(page, "Reports");
   await expect(page.getByText("TOTAL REVENUE")).toBeVisible();
+});
+
+test("activity monitor page loads for owner", async ({ page }) => {
+  await navigateTo(page, "Activity");
+  await expect(page.getByRole("heading", { name: "Activity Monitor" })).toBeVisible();
+  await expect(page.getByText("Real-time feed of waiter-customer interactions")).toBeVisible();
 });
 
 test("AI assistant page loads with prompt chips", async ({ page }) => {
