@@ -13,19 +13,24 @@ export const themes: Array<{ name: ThemeName; label: string; colors: string[] }>
 
 const STORAGE_KEY = "emd-theme";
 
+function getStoredTheme(): ThemeName | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as ThemeName | null;
+    if (stored && themes.some(t => t.name === stored)) return stored;
+  } catch {}
+  return null;
+}
+
 export function useTheme() {
-  const [theme, setThemeState] = useState<ThemeName>("black");
+  const [theme, setThemeState] = useState<ThemeName>(getStoredTheme() ?? "black");
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as ThemeName | null;
-      if (stored && themes.some(t => t.name === stored)) {
-        setThemeState(stored);
-        applyTheme(stored);
-      } else {
-        applyTheme("black");
-      }
-    } catch {
+    const stored = getStoredTheme();
+    if (stored) {
+      setThemeState(stored);
+      applyTheme(stored);
+    } else {
       applyTheme("black");
     }
   }, []);

@@ -15,7 +15,7 @@ const PERSIST_KEY = "emd-drinking-sports-v4";
  * so everyone picks up the new catalogue; a match keeps the operator's real work
  * (sales, stock levels, customers, open tables) intact across refreshes.
  */
-const SEED_VERSION = 7;
+const SEED_VERSION = 8;
 
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {
@@ -148,13 +148,16 @@ export function mergePersistedState(
     return {
       ...currentState,
       seedVersion: SEED_VERSION,
-      // Customer-portal activity is the operator's own data, so keep it even
-      // through a seed refresh.
+      // Customer-portal activity and custom data are the operator's own data,
+      // so keep them even through a seed refresh.
       customerOrders: persisted?.customerOrders ?? [],
       waiterCalls: persisted?.waiterCalls ?? [],
       chatMessages: persisted?.chatMessages ?? [],
       eventBookings: persisted?.eventBookings ?? [],
       barOpen: persisted?.barOpen ?? true,
+      // Keep customers and staff so profile pictures and records survive
+      customers: persisted?.customers ?? currentState.customers,
+      staff: persisted?.staff ?? currentState.staff,
     };
   }
 
@@ -194,7 +197,9 @@ export const useAppStore = create<AppState>()(
       eventNotifications: [],
       rolePermissions: {
         owner: ["sell","manage_tables","manage_customers","manage_debts","manage_inventory","manage_expenses","manage_events","view_reports","manage_staff","manage_settings","void_sale"],
+        admin: ["sell","manage_tables","manage_customers","manage_debts","manage_inventory","manage_expenses","manage_events","view_reports","manage_staff","manage_settings","void_sale"],
         manager: ["sell","manage_tables","manage_customers","manage_debts","manage_inventory","manage_expenses","manage_events","view_reports","void_sale"],
+        coordinator: ["sell","manage_tables","manage_customers","manage_events","view_reports"],
         cashier: ["sell","manage_tables","manage_customers","manage_debts","view_reports"],
         waiter: ["sell","manage_tables","manage_customers"]
       },

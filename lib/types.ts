@@ -4,7 +4,7 @@ export type PaymentMethod = "cash" | "momo" | "card" | "gift" | "wallet";
 export type PaymentStatus = "pending" | "successful" | "failed" | "reversed";
 export type OrderStatus = "open" | "held" | "paid" | "voided";
 export type GiftCardStatus = "active" | "redeemed" | "disabled" | "expired";
-export type AppRole = "owner" | "manager" | "cashier" | "waiter";
+export type AppRole = "owner" | "admin" | "manager" | "coordinator" | "cashier" | "waiter";
 export type StockMovementType =
   | "purchase" | "sale_bottle" | "open_for_shots"
   | "adjustment_in" | "adjustment_out" | "waste" | "redemption";

@@ -6,7 +6,7 @@ import {
   Smartphone, Trophy, Users, WalletCards, X, Minus, AlertTriangle, ArrowUpRight,
   Pause, Play, Trash2, Printer, ArrowRightLeft, TrendingUp, TrendingDown,
   Package, CheckCircle2, Clock, Wifi, WifiOff, LogOut, Loader2, Scissors, Bell,
-  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper, MessageSquare, Phone, UserPlus, UserMinus, Ban, CheckCircle
+  Banknote, Send, Music, Gamepad2, Moon, Calendar, Star, Pencil, PartyPopper, MessageSquare, Phone, UserPlus, UserMinus, Ban, CheckCircle, Camera, MapPin
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -21,11 +21,12 @@ import { useTheme, themes } from "@/lib/hooks/useTheme";
 import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, GiftCardStatus, BarEvent, EventCategory, CartLine, StaffMember } from "@/lib/types";
 import type { Permission } from "@/lib/auth/roles";
 import { QRCodeSVG } from "qrcode.react";
+import { compressImage, blobToDataURL, compressAndConvertToDataURL } from "@/lib/image/compress";
 
 type Page =
   | "Dashboard" | "POS / Sales" | "Tables" | "Inventory" | "Customers" | "Debts"
   | "Payments" | "Gift Cards" | "Wallets & Loyalty" | "Reports" | "AI Assistant"
-  | "Event Management" | "Expenses" | "Staff" | "Settings";
+  | "Event Management" | "Expenses" | "Staff" | "Settings" | "Activity";
 
 type IconType = typeof Home;
 
@@ -35,6 +36,7 @@ const nav: Array<{ label: Page; icon: IconType }> = [
   { label: "Tables", icon: LayoutGrid },
   { label: "Inventory", icon: Boxes },
   { label: "Customers", icon: Users },
+  { label: "Activity", icon: Bell },
   { label: "Debts", icon: ReceiptText },
   { label: "Payments", icon: CreditCard },
   { label: "Gift Cards", icon: Gift },
@@ -48,8 +50,10 @@ const nav: Array<{ label: Page; icon: IconType }> = [
 ];
 
 const roleLabels: Record<AppRole, string> = {
+  admin: "Admin",
   owner: "Owner",
   manager: "Manager",
+  coordinator: "Coordinator",
   cashier: "Cashier",
   waiter: "Waiter"
 };
@@ -65,6 +69,7 @@ const pagePermission: Partial<Record<Page, Permission>> = {
   "Gift Cards": "manage_debts",
   "Wallets & Loyalty": "manage_debts",
   "Reports": "view_reports",
+  "Activity": "view_reports",
   "AI Assistant": "view_reports",
   "Event Management": "manage_events",
   "Expenses": "manage_expenses",
@@ -260,6 +265,7 @@ function AppInner() {
             {page === "Gift Cards" && (can("manage_customers") ? <GiftCards/> : <AccessDenied/>)}
             {page === "Wallets & Loyalty" && (can("manage_customers") ? <Wallets/> : <AccessDenied/>)}
             {page === "Reports" && (can("view_reports") ? <Reports/> : <AccessDenied/>)}
+            {page === "Activity" && (can("view_reports") ? <ActivityMonitor/> : <AccessDenied/>)}
             {page === "AI Assistant" && (can("view_reports") ? <AIAssistant/> : <AccessDenied/>)}
             {page === "Event Management" && (can("manage_tables") ? <Football/> : <AccessDenied/>)}
             {page === "Expenses" && (can("manage_expenses") ? <Expenses/> : <AccessDenied/>)}
@@ -1264,6 +1270,7 @@ function POS() {
           {pagedProducts.map(p=>{
             const low = p.stock <= p.reorderLevel;
             return <article className={`product-card ${p.stock<=0?"out-of-stock":""}`} key={p.id}>
+            <div className="product-card-visual"><ProductVisual product={p}/></div>
             <div className="product-card-head">
               <h3>{p.name}</h3>
               {p.stock<=0 ? <span className="stock-chip out">OUT</span> : low ? <span className="stock-chip low">LOW</span> : null}
@@ -1871,27 +1878,27 @@ function ProductFormModal({ product, isDemoMode, onClose, onSave }: {
   const handleImageSelect = async (file: File) => {
     setUploadError(null);
     if (!file.type.startsWith("image/")) { setUploadError("Please select an image file"); return; }
-    if (file.size > 2 * 1024 * 1024) { setUploadError("Image must be under 2MB"); return; }
+    if (file.size > 5 * 1024 * 1024) { setUploadError("Image must be under 5MB"); return; }
 
-    if (isDemoMode) {
-      // Demo mode: convert to data URL stored in zustand
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        setImageUrl(dataUrl);
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-
-    // Production mode: upload to Supabase storage
     setUploading(true);
     try {
+      // Compress image before upload/storage to keep storage small and system fast
+      const compressedBlob = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.8, type: "image/jpeg" });
+      const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+
+      if (isDemoMode) {
+        // Demo mode: convert compressed blob to data URL stored in zustand/localStorage
+        const dataUrl = await blobToDataURL(compressedBlob);
+        setImageUrl(dataUrl);
+        setUploading(false);
+        return;
+      }
+
+      // Production mode: upload compressed image to Supabase storage
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `products/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("products").upload(path, file, { upsert: false });
+      const path = `products/${crypto.randomUUID()}.jpg`;
+      const { error: uploadErr } = await supabase.storage.from("products").upload(path, compressedFile, { upsert: false, contentType: "image/jpeg" });
       if (uploadErr) throw new Error(uploadErr.message);
       const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(path);
       setImageUrl(publicUrl);
@@ -2170,6 +2177,176 @@ function Wallets() {
   const [topupAmount, setTopupAmount] = useState<Record<string, string>>({});
   return <PageBox title="Wallets & Loyalty" subtitle="Reward the people who keep coming back">
     <div className="card-grid">{customers.map(c=><article className="info-card" key={c.id}><WalletCards/><h3>{c.name}</h3><div className="big-number">{c.loyaltyPoints}</div><small>Loyalty points</small><div className="info-row"><span>Wallet</span><b>{money(c.walletBalance)}</b></div><div className="progress"><i style={{width:`${Math.min(100,c.loyaltyPoints)}%`}}/></div><div className="button-row"><input type="number" placeholder="Top up" style={{width:"70px"}} value={topupAmount[c.id] ?? ""} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setTopupAmount({...topupAmount,[c.id]:e.target.value})}/><button className="mini" onClick={()=>{const amt=Number(topupAmount[c.id] ?? 0);if(amt>0){topUpWallet(c.id,amt);setTopupAmount({...topupAmount,[c.id]:""})}}}>Top up</button></div></article>)}</div>
+  </PageBox>;
+}
+
+function ActivityMonitor() {
+  const sales = useAppStore(s => s.sales);
+  const customerOrders = useAppStore(s => s.customerOrders);
+  const waiterCalls = useAppStore(s => s.waiterCalls);
+  const chatMessages = useAppStore(s => s.chatMessages);
+  const customerReports = useAppStore(s => s.customerReports);
+  const customers = useAppStore(s => s.customers);
+  const staff = useAppStore(s => s.staff);
+  const tables = useAppStore(s => s.tables);
+  const [filter, setFilter] = useState<"all" | "orders" | "calls" | "messages" | "payments" | "reports">("all");
+
+  const getCustomer = (id?: string) => customers.find(c => c.id === id);
+  const getStaff = (id?: string) => staff.find(s => s.id === id);
+  const getTable = (id?: string) => tables.find(t => t.id === id);
+
+  type ActivityItem = {
+    id: string;
+    type: "payment" | "order" | "call" | "message" | "report";
+    createdAt: string;
+    title: string;
+    description: string;
+    amount: number;
+    customer?: { name: string; avatarUrl?: string };
+    staff?: { name: string; avatarUrl?: string };
+    table?: { name: string };
+    status: string;
+    data: unknown;
+  };
+
+  const activities: ActivityItem[] = [
+    ...sales.map(s => ({
+      id: `sale-${s.id}`,
+      type: "payment" as const,
+      createdAt: s.createdAt,
+      title: `Sale ${s.voided ? "voided" : "paid"}`,
+      description: `${s.lines.length} item(s) via ${s.paymentMethod.toUpperCase()}`,
+      amount: s.total,
+      customer: getCustomer(s.customerId),
+      staff: getStaff(s.cashierId),
+      table: getTable(s.tableId),
+      status: s.voided ? "voided" : "paid",
+      data: s
+    })),
+    ...customerOrders.map(o => ({
+      id: `order-${o.id}`,
+      type: "order" as const,
+      createdAt: o.createdAt,
+      title: `Customer order — ${o.status}`,
+      description: `${o.lines.length} item(s)`,
+      amount: o.lines.reduce((s: number, l: { unitPrice: number; quantity: number }) => s + l.unitPrice * l.quantity, 0),
+      customer: getCustomer(o.customerId),
+      staff: undefined,
+      table: getTable(o.tableId),
+      status: o.status,
+      data: o
+    })),
+    ...waiterCalls.map(c => ({
+      id: `call-${c.id}`,
+      type: "call" as const,
+      createdAt: c.createdAt,
+      title: `Waiter call — ${c.status}`,
+      description: c.message || "Waiter call",
+      amount: 0,
+      customer: c.customerId ? getCustomer(c.customerId) : undefined,
+      staff: getStaff(c.waiterId),
+      table: getTable(c.tableId),
+      status: c.status,
+      data: c
+    })),
+    ...chatMessages.map(m => ({
+      id: `msg-${m.id}`,
+      type: "message" as const,
+      createdAt: m.createdAt,
+      title: m.sender === "customer" ? "Customer message" : "Waiter reply",
+      description: m.text,
+      amount: 0,
+      customer: m.customerId ? getCustomer(m.customerId) : undefined,
+      staff: m.waiterId ? getStaff(m.waiterId) : undefined,
+      table: getTable(m.tableId),
+      status: m.sender,
+      data: m
+    })),
+    ...customerReports.map(r => ({
+      id: `report-${r.id}`,
+      type: "report" as const,
+      createdAt: r.createdAt,
+      title: `Customer report — ${r.status}`,
+      description: `${r.subject}: ${r.message}`,
+      amount: 0,
+      customer: getCustomer(r.customerId),
+      staff: r.waiterId ? getStaff(r.waiterId) : undefined,
+      table: getTable(r.tableId),
+      status: r.status,
+      data: r
+    }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const filtered = filter === "all" ? activities : activities.filter(a => {
+    if (filter === "orders") return a.type === "order";
+    if (filter === "calls") return a.type === "call";
+    if (filter === "messages") return a.type === "message";
+    if (filter === "payments") return a.type === "payment";
+    if (filter === "reports") return a.type === "report";
+    return true;
+  });
+
+  const typeIcon = (type: string, status: string) => {
+    if (type === "payment") return status === "voided" ? <ReceiptText size={16}/> : <Banknote size={16}/>;
+    if (type === "order") return <ShoppingCart size={16}/>;
+    if (type === "call") return <Bell size={16}/>;
+    if (type === "message") return <MessageSquare size={16}/>;
+    if (type === "report") return <AlertTriangle size={16}/>;
+    return <Clock size={16}/>;
+  };
+
+  const typeClass = (type: string, status: string) => {
+    if (type === "payment") return status === "voided" ? "voided" : "success";
+    if (type === "order") return status === "pending" ? "pending" : status === "paid" ? "success" : "info";
+    if (type === "call") return status === "pending" ? "pending" : "info";
+    if (type === "message") return status === "customer" ? "customer" : "info";
+    if (type === "report") return status === "open" ? "pending" : "success";
+    return "info";
+  };
+
+  return <PageBox title="Activity Monitor" subtitle="Real-time feed of waiter-customer interactions and transactions">
+    <div className="activity-filters">
+      {(["all", "orders", "calls", "messages", "payments", "reports"] as const).map(f => (
+        <button key={f} className={filter === f ? "active" : ""} onClick={() => setFilter(f)}>
+          {f === "all" ? <Clock size={14}/> : f === "orders" ? <ShoppingCart size={14}/> : f === "calls" ? <Bell size={14}/> : f === "messages" ? <MessageSquare size={14}/> : f === "payments" ? <Banknote size={14}/> : <AlertTriangle size={14}/>}
+          <span>{f[0].toUpperCase() + f.slice(1)}</span>
+        </button>
+      ))}
+    </div>
+
+    <div className="activity-feed">
+      {filtered.length === 0 ? (
+        <p className="muted-text">No activity yet. Interactions will appear here as they happen.</p>
+      ) : filtered.map(a => (
+        <div key={a.id} className={`activity-item ${a.type} ${typeClass(a.type, a.status)}`}>
+          <div className="activity-icon">{typeIcon(a.type, a.status)}</div>
+          <div className="activity-content">
+            <div className="activity-head">
+              <strong>{a.title}</strong>
+              <small>{new Date(a.createdAt).toLocaleString()}</small>
+            </div>
+            <p className="activity-desc">{a.description}</p>
+            <div className="activity-meta">
+              {a.customer && (
+                <span className="activity-actor">
+                  {a.customer.avatarUrl ? <img src={a.customer.avatarUrl} alt={a.customer.name} className="activity-avatar" /* eslint-disable-line @next/next/no-img-element */ /> : <div className="activity-avatar-placeholder">{a.customer.name[0]}</div>}
+                  {a.customer.name}
+                </span>
+              )}
+              {a.staff && (
+                <span className="activity-actor staff">
+                  {a.staff.avatarUrl ? <img src={a.staff.avatarUrl} alt={a.staff.name} className="activity-avatar" /* eslint-disable-line @next/next/no-img-element */ /> : <div className="activity-avatar-placeholder">{a.staff.name[0]}</div>}
+                  {a.staff.name}
+                </span>
+              )}
+              {a.table && <span className="activity-tag"><MapPin size={11}/> {a.table.name}</span>}
+              {a.amount > 0 && <span className="activity-amount">{money(a.amount)}</span>}
+              <span className={`activity-status ${typeClass(a.type, a.status)}`}>{a.status}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   </PageBox>;
 }
 
@@ -2700,6 +2877,10 @@ function Staff() {
   const [editRole, setEditRole] = useState<AppRole>("waiter");
   const [showPermissions, setShowPermissions] = useState(false);
 
+  const [editAvatar, setEditAvatar] = useState<string | undefined>(undefined);
+  const [editAvatarUploading, setEditAvatarUploading] = useState(false);
+  const editAvatarInputRef = React.useRef<HTMLInputElement>(null);
+
   const allPermissions: Array<{ key: string; label: string }> = [
     { key: "sell", label: "Sell / POS" },
     { key: "manage_tables", label: "Manage Tables" },
@@ -2725,12 +2906,27 @@ function Staff() {
     setEditName(s.name);
     setEditPhone(s.phone ?? "");
     setEditRole(s.role);
+    setEditAvatar(s.avatarUrl);
   };
 
   const handleSaveEdit = () => {
     if (!editing || !editName.trim()) return;
-    updateStaff(editing.id, { name: editName.trim(), phone: editPhone.trim() || undefined, role: editRole });
+    updateStaff(editing.id, { name: editName.trim(), phone: editPhone.trim() || undefined, role: editRole, avatarUrl: editAvatar });
     setEditing(null);
+  };
+
+  const handleEditAvatar = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setEditAvatarUploading(true);
+    try {
+      const dataUrl = await compressAndConvertToDataURL(file, { maxWidth: 400, maxHeight: 400, quality: 0.8, type: "image/jpeg" });
+      setEditAvatar(dataUrl);
+    } catch {
+      alert("Failed to process image");
+    } finally {
+      setEditAvatarUploading(false);
+    }
+    if (editAvatarInputRef.current) editAvatarInputRef.current.value = "";
   };
 
   return <PageBox title="Staff" subtitle="Manage employees, roles, and permissions">
@@ -2795,9 +2991,9 @@ function Staff() {
             <label><small>Phone (optional)</small><input placeholder="055 123 4567" value={newPhone} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setNewPhone(e.target.value)} /></label>
             <label><small>Role</small>
               <select value={newRole[0]} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>newRole[1](e.target.value as AppRole)}>
-                <option value="manager">Manager</option>
-                <option value="cashier">Cashier</option>
-                <option value="waiter">Waiter</option>
+                {(Object.keys(roleLabels) as AppRole[]).filter(r => r !== "owner" && r !== "admin").map(r => (
+                  <option key={r} value={r}>{roleLabels[r]}</option>
+                ))}
               </select>
             </label>
           </div>
@@ -2814,14 +3010,20 @@ function Staff() {
         <div className="modal-card" onClick={(e:React.MouseEvent<HTMLDivElement>)=>e.stopPropagation()}>
           <h2>Edit Employee</h2>
           <div className="pay-fields">
+            <div className="staff-avatar-edit">
+              {editAvatar ? <img src={editAvatar} alt={editName} className="staff-avatar-preview" /* eslint-disable-line @next/next/no-img-element */ /> : <div className="staff-avatar-preview placeholder">{editName[0]}</div>}
+              <button className="mini" onClick={() => editAvatarInputRef.current?.click()} disabled={editAvatarUploading}>
+                {editAvatarUploading ? <Loader2 size={12} className="auth-spinner"/> : <Camera size={12}/>} {editAvatar ? "Change" : "Add"} Photo
+              </button>
+              <input ref={editAvatarInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={(e:React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) handleEditAvatar(f); }} />
+            </div>
             <label><small>Name</small><input value={editName} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setEditName(e.target.value)} autoFocus /></label>
             <label><small>Phone</small><input value={editPhone} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setEditPhone(e.target.value)} /></label>
             <label><small>Role</small>
               <select value={editRole} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>setEditRole(e.target.value as AppRole)}>
-                <option value="owner">Owner</option>
-                <option value="manager">Manager</option>
-                <option value="cashier">Cashier</option>
-                <option value="waiter">Waiter</option>
+                {(Object.keys(roleLabels) as AppRole[]).map(r => (
+                  <option key={r} value={r}>{roleLabels[r]}</option>
+                ))}
               </select>
             </label>
           </div>

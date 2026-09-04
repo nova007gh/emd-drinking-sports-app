@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { AuthProvider } from "@/lib/auth/context";
+import { ThemeInitializer } from "@/components/ThemeInitializer";
 
 export const metadata: Metadata = {
   title: "EMD Drinking Sports App",
@@ -11,11 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('emd-theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()` }} />
-      </head>
-      <body suppressHydrationWarning><AuthProvider><ServiceWorkerRegistration />{children}</AuthProvider></body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning><AuthProvider><ThemeInitializer /><ServiceWorkerRegistration />{children}</AuthProvider></body>
     </html>
   );
 }

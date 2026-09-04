@@ -11,6 +11,7 @@ import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import type { Product, ProductCategory, CartLine } from "@/lib/types";
 import { InventoryError } from "@/lib/domain/inventory";
+import { compressAndConvertToDataURL } from "@/lib/image/compress";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
@@ -1064,17 +1065,20 @@ function PortalProfile({ customerId }: { customerId: string }) {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
-    if (file.size > 2 * 1024 * 1024) { alert("Image must be under 2MB"); return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Image must be under 5MB"); return; }
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateCustomerProfile(customerId, { avatarUrl: reader.result as string });
+    try {
+      // Compress before storing to keep localStorage small and fast
+      const dataUrl = await compressAndConvertToDataURL(file, { maxWidth: 400, maxHeight: 400, quality: 0.8, type: "image/jpeg" });
+      updateCustomerProfile(customerId, { avatarUrl: dataUrl });
+    } catch {
+      alert("Failed to process image. Please try a smaller image.");
+    } finally {
       setUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 

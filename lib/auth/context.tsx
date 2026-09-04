@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { AppRole } from "@/lib/types";
 import { hasPermission, type Permission } from "@/lib/auth/roles";
 import { useAppStore } from "@/lib/store";
+import { compressAndConvertToDataURL } from "@/lib/image/compress";
 
 interface AuthUser {
   id: string;
@@ -34,8 +35,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const STORAGE_KEY = "emd-auth-session";
 
 const demoUsers: Array<{ email: string; password: string; name: string; role: AppRole }> = [
+  { email: "admin@emd.com", password: "admin123", name: "Emmanuel", role: "admin" },
   { email: "owner@emd.com", password: "owner123", name: "Emmanuel", role: "owner" },
   { email: "manager@emd.com", password: "manager123", name: "Yaw", role: "manager" },
+  { email: "coordinator@emd.com", password: "coordinator123", name: "Akosua", role: "coordinator" },
   { email: "cashier@emd.com", password: "cashier123", name: "Ama", role: "cashier" },
   { email: "waiter@emd.com", password: "waiter123", name: "Kojo", role: "waiter" }
 ];
@@ -218,8 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, isDemoMode]);
 
   const can = useCallback((permission: Permission) => {
-    // Owner always has all permissions
-    if (role === "owner") return true;
+    // Owner and admin always have all permissions
+    if (role === "owner" || role === "admin") return true;
     // Check store-based custom permissions first, fall back to static defaults
     try {
       const storeState = useAppStore.getState();
@@ -233,32 +236,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const uploadAvatar = useCallback(async (file: File): Promise<{ error: string | null }> => {
     if (!file.type.startsWith("image/")) return { error: "Please select an image file" };
-    if (file.size > 2 * 1024 * 1024) return { error: "Image must be under 2MB" };
+    if (file.size > 5 * 1024 * 1024) return { error: "Image must be under 5MB" };
 
     if (isDemoMode) {
-      // Demo mode: convert to data URL and store in localStorage per-role
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result as string;
-          setAvatarUrl(dataUrl);
-          if (user) {
-            // Save avatar per-role so each demo user has their own
-            localStorage.setItem(`${STORAGE_KEY}-avatar-${user.role}`, dataUrl);
-            const updated = { ...user, avatarUrl: dataUrl };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            setUser(updated);
-          }
-          resolve({ error: null });
-        };
-        reader.onerror = () => resolve({ error: "Failed to read image" });
-        reader.readAsDataURL(file);
-      });
+      // Demo mode: compress and convert to data URL stored in localStorage per-role
+      try {
+        const dataUrl = await compressAndConvertToDataURL(file, { maxWidth: 400, maxHeight: 400, quality: 0.8, type: "image/jpeg" });
+        setAvatarUrl(dataUrl);
+        if (user) {
+          localStorage.setItem(`${STORAGE_KEY}-avatar-${user.role}`, dataUrl);
+          const updated = { ...user, avatarUrl: dataUrl };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          setUser(updated);
+        }
+        return { error: null };
+      } catch {
+        return { error: "Failed to process image" };
+      }
     }
 
+    // Production mode: upload to Supabase storage (also compress first)
     try {
+      const dataUrl = await compressAndConvertToDataURL(file, { maxWidth: 400, maxHeight: 400, quality: 0.8, type: "image/jpeg" });
+      const blob = await (await fetch(dataUrl)).blob();
+      const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
       const res = await fetch("/api/avatar", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) return { error: data.error ?? "Upload failed" };
