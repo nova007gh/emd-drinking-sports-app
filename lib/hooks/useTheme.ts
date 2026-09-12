@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-export type ThemeName = "black" | "white" | "red-white" | "black-red";
+export type ThemeName = "black" | "white" | "red-white" | "black-red" | "midnight" | "emerald" | "royal" | "sunset";
 
 export const themes: Array<{ name: ThemeName; label: string; colors: string[] }> = [
   { name: "black", label: "Black & Gold", colors: ["#050505", "#f9c317"] },
   { name: "white", label: "White & Gold", colors: ["#ffffff", "#d4a017"] },
   { name: "red-white", label: "Red & White", colors: ["#ffffff", "#e74c3c"] },
-  { name: "black-red", label: "Black & Red", colors: ["#0a0505", "#ff4d4d"] }
+  { name: "black-red", label: "Black & Red", colors: ["#0a0505", "#ff4d4d"] },
+  { name: "midnight", label: "Midnight Blue", colors: ["#0a0f1e", "#3b82f6"] },
+  { name: "emerald", label: "Emerald", colors: ["#04130d", "#10b981"] },
+  { name: "royal", label: "Royal Purple", colors: ["#0f0a1e", "#a78bfa"] },
+  { name: "sunset", label: "Sunset Orange", colors: ["#1a0f0a", "#f97316"] }
 ];
 
 const STORAGE_KEY = "emd-theme";
