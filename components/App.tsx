@@ -87,6 +87,29 @@ const defaultSettings = {
   receiptFooter: "Thank you for drinking with EMD! Come again."
 };
 
+function Toasts() {
+  const toasts = useAppStore((s) => s.toasts);
+  const dismissToast = useAppStore((s) => s.dismissToast);
+  useEffect(() => {
+    const timers = toasts.map((t) => setTimeout(() => dismissToast(t.id), 5000));
+    return () => { timers.forEach(clearTimeout); };
+  }, [toasts, dismissToast]);
+  if (toasts.length === 0) return null;
+  return (
+    <div className="toast-container">
+      {toasts.map((t) => (
+        <div key={t.id} className={`toast toast-${t.type}`}>
+          <div className="toast-head">
+            {t.title && <strong>{t.title}</strong>}
+            <button onClick={() => dismissToast(t.id)} aria-label="Dismiss">×</button>
+          </div>
+          {t.message && <p>{t.message}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   return <AppInner />;
 }
@@ -163,7 +186,9 @@ function AppInner() {
   }
 
   return (
-    <div className="app-shell">
+    <>
+      <Toasts />
+      <div className="app-shell">
       {mobileNav && <div className="sidebar-backdrop" onClick={() => setMobileNav(false)} />}
       <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
         <div className="brand">
@@ -303,6 +328,7 @@ function AppInner() {
         </nav>
       </main>
     </div>
+    </>
   );
 }
 

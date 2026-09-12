@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { customersSeed, debtsSeed, expensesSeed, giftCardsSeed, matchesSeed, productsSeed, salesSeed, staffSeed, tablesSeed } from "./seed";
 import { applySaleToProduct } from "./domain/inventory";
 import { enqueueOfflineOperation } from "./offline/queue";
-import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, SeatTab, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking, AppRole } from "./types";
+import type { BarTable, CartLine, Customer, Debt, Expense, GiftCard, HeldOrder, BarEvent, Match, PaymentMethod, Product, SaleMode, SaleRecord, SeatTab, StaffMember, StockMovement, CustomerOrder, WaiterCall, ChatMessage, EventBooking, AppRole, Toast, ToastType } from "./types";
 
 const PERSIST_KEY = "emd-drinking-sports-v4";
 
@@ -113,6 +113,9 @@ interface AppState {
   /** Notifications for upcoming events */
   eventNotifications: Array<{ id: string; text: string; eventId: string; severity: "info" | "warning" }>;
   dismissEventNotification: (id: string) => void;
+  toasts: Toast[];
+  pushToast: (message: string, title?: string, type?: ToastType) => void;
+  dismissToast: (id: string) => void;
   // Employee management
   addStaff: (name: string, role: AppRole, phone?: string) => void;
   updateStaff: (id: string, updates: Partial<StaffMember>) => void;
@@ -205,6 +208,7 @@ export const useAppStore = create<AppState>()(
         waiter: ["sell","manage_tables","manage_customers"]
       },
       customerReports: [],
+      toasts: [],
       aiName: "EMD Assistant",
 
       addToCart: (productId, mode) => {
@@ -894,6 +898,7 @@ export const useAppStore = create<AppState>()(
         }
 
         const orderTotal = totalOf(lines);
+        const tableName = state.tables.find((t) => t.id === tableId)?.name ?? tableId;
         set({
           customerOrders: [order, ...state.customerOrders],
           products: nextProducts,
@@ -902,6 +907,7 @@ export const useAppStore = create<AppState>()(
             ? { ...t, occupied: true, bill: t.bill + orderTotal }
             : t)
         });
+        get().pushToast(`New portal order on ${tableName} for ${lines.length} item(s)`, "Customer order", "info");
         return id;
       },
 
@@ -958,12 +964,15 @@ export const useAppStore = create<AppState>()(
             return { ...t, bill: remaining, occupied: remaining > 0 };
           })
         });
+        get().pushToast(`Customer portal order paid (${method})`, "Order paid", "success");
       },
 
       callWaiter: (tableId, customerId, message) => {
         const id = `wc${Date.now()}`;
         const call: WaiterCall = { id, tableId, customerId, status: "pending", message, createdAt: new Date().toISOString() };
         set((s) => ({ waiterCalls: [call, ...s.waiterCalls] }));
+        const msg = message ? `Table ${tableId}: ${message}` : `Customer at table ${tableId} called a waiter`;
+        get().pushToast(msg, "Waiter call", "warning");
       },
 
       updateWaiterCall: (callId, updates) => set((s) => ({
@@ -974,6 +983,10 @@ export const useAppStore = create<AppState>()(
         const id = `msg${Date.now()}`;
         const msg: ChatMessage = { id, tableId, customerId, waiterId, sender, text, createdAt: new Date().toISOString() };
         set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
+        if (sender === "customer") {
+          const preview = `${text.slice(0, 50)}${text.length > 50 ? "..." : ""}`;
+          get().pushToast(`New message from table ${tableId}: ${preview}`, "Customer message", "info");
+        }
       },
 
       bookEvent: (matchId, customerId, customerName, type, tableId) => {
@@ -995,6 +1008,19 @@ export const useAppStore = create<AppState>()(
 
       dismissEventNotification: (id) => set((state) => ({
         eventNotifications: state.eventNotifications.filter(n => n.id !== id),
+      })),
+
+      pushToast: (message, title = "", type = "info") => set((state) => ({
+        toasts: [{
+          id: crypto.randomUUID(),
+          title,
+          message,
+          type,
+          createdAt: new Date().toISOString()
+        }, ...state.toasts].slice(0, 5)
+      })),
+      dismissToast: (id) => set((state) => ({
+        toasts: state.toasts.filter(t => t.id !== id)
       })),
 
       addStaff: (name, role, phone) => set((state) => ({

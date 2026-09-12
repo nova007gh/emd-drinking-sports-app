@@ -1,6 +1,8 @@
 export type ProductCategory = "Beer" | "Spirits" | "Wine" | "Soft Drinks" | "Water" | "Energy Drinks" | "Cigarettes" | "Snacks" | "Juice";
 export type SaleMode = "bottle" | "shot";
 export type PaymentMethod = "cash" | "momo" | "card" | "gift" | "wallet";
+export type ToastType = "info" | "success" | "warning" | "error";
+export interface Toast { id: string; title: string; message: string; type: ToastType; createdAt: string; }
 export type PaymentStatus = "pending" | "successful" | "failed" | "reversed";
 export type OrderStatus = "open" | "held" | "paid" | "voided";
 export type GiftCardStatus = "active" | "redeemed" | "disabled" | "expired";
