@@ -15,7 +15,7 @@ const PERSIST_KEY = "emd-drinking-sports-v4";
  * so everyone picks up the new catalogue; a match keeps the operator's real work
  * (sales, stock levels, customers, open tables) intact across refreshes.
  */
-const SEED_VERSION = 10;
+const SEED_VERSION = 11;
 
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {
@@ -156,9 +156,9 @@ export function mergePersistedState(
       chatMessages: persisted?.chatMessages ?? [],
       eventBookings: persisted?.eventBookings ?? [],
       barOpen: persisted?.barOpen ?? true,
-      // Keep customers and staff so profile pictures and records survive
+      // Keep customers so records survive; staff comes from the latest seed
+      // so new avatar/name changes in the demo seed take effect on version bump.
       customers: persisted?.customers ?? currentState.customers,
-      staff: persisted?.staff ?? currentState.staff,
     };
   }
 

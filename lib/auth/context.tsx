@@ -40,7 +40,7 @@ const demoUsers: Array<{ email: string; password: string; name: string; role: Ap
   { email: "manager@emd.com", password: "manager123", name: "Yaw", role: "manager" },
   { email: "coordinator@emd.com", password: "coordinator123", name: "Akosua", role: "coordinator" },
   { email: "cashier@emd.com", password: "cashier123", name: "Ama", role: "cashier" },
-  { email: "waiter@emd.com", password: "waiter123", name: "Kojo", role: "waiter" }
+  { email: "waiter@emd.com", password: "waiter123", name: "Kofi", role: "waiter" }
 ];
 
 function getSupabaseConfigured(): boolean {
@@ -86,9 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const stored = localStorage.getItem(STORAGE_KEY);
           if (stored) {
             const parsed = JSON.parse(stored) as AuthUser;
-            setUser(parsed);
+            const latest = demoUsers.find((u) => u.email === parsed.email);
+            const name = latest?.name ?? parsed.name;
+            setUser({ ...parsed, name });
             setRoleState(parsed.role);
-            setUserName(parsed.name);
+            setUserName(name);
             setAvatarUrl(parsed.avatarUrl);
           }
         } catch {}
