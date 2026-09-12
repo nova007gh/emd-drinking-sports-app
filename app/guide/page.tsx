@@ -9,6 +9,9 @@ export default function GuidePage() {
   return (
     <div className="guide-page">
       <style>{GUIDE_CSS}</style>
+      <div className="guide-video-banner">
+        <a href="/guide/animated">▶ Watch the animated quick-start guide</a>
+      </div>
       <div className="guide-cover">
         <div className="guide-cover-logo">EMD</div>
         <h1>EMD Drinking Sports</h1>
@@ -568,5 +571,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .guide-section { page-break-inside: avoid; }
   .guide-cover { page-break-after: always; }
   .guide-toc { page-break-after: always; }
+  .guide-video-banner { display: none; }
 }
+
+/* Modern swift animations */
+.guide-page * { scroll-behavior: smooth; }
+.guide-cover { animation: fadeInDown 0.8s cubic-bezier(0.2,0.8,0.2,1) both; }
+.guide-cover-logo { animation: popIn 0.6s cubic-bezier(0.2,0.8,0.2,1) 0.2s both; }
+.guide-toc { animation: fadeInUp 0.7s cubic-bezier(0.2,0.8,0.2,1) 0.3s both; }
+.guide-section { animation: fadeInUp 0.6s cubic-bezier(0.2,0.8,0.2,1) both; }
+.guide-section:nth-of-type(1) { animation-delay: 0.4s; }
+.guide-section:nth-of-type(2) { animation-delay: 0.5s; }
+.guide-section:nth-of-type(3) { animation-delay: 0.6s; }
+.guide-section:nth-of-type(4) { animation-delay: 0.7s; }
+.guide-section:nth-of-type(5) { animation-delay: 0.8s; }
+.guide-section:nth-of-type(6) { animation-delay: 0.9s; }
+.guide-section:nth-of-type(7) { animation-delay: 1.0s; }
+.guide-section:nth-of-type(8) { animation-delay: 1.1s; }
+.guide-section:nth-of-type(9) { animation-delay: 1.2s; }
+.guide-section:nth-of-type(10) { animation-delay: 1.3s; }
+.guide-section:nth-of-type(11) { animation-delay: 1.4s; }
+.guide-section:nth-of-type(12) { animation-delay: 1.5s; }
+.guide-section:nth-of-type(13) { animation-delay: 1.6s; }
+.guide-section:nth-of-type(14) { animation-delay: 1.7s; }
+.guide-section:nth-of-type(15) { animation-delay: 1.8s; }
+.guide-section:nth-of-type(16) { animation-delay: 1.9s; }
+.guide-section:nth-of-type(17) { animation-delay: 2.0s; }
+.guide-section:nth-of-type(18) { animation-delay: 2.1s; }
+.guide-section:nth-of-type(19) { animation-delay: 2.2s; }
+.guide-section:nth-of-type(20) { animation-delay: 2.3s; }
+.guide-toc li { transition: transform 0.2s ease, color 0.2s ease; }
+.guide-toc li:hover { transform: translateX(6px); color: #8a6d00; }
+.guide-table tr { transition: background 0.2s ease, transform 0.2s ease; }
+.guide-table tbody tr:hover { transform: scale(1.005); }
+.guide-video-banner { text-align: center; padding: 14px; background: #fffbe6; border-bottom: 2px solid #f0d860; animation: fadeInDown 0.5s ease both; }
+.guide-video-banner a { color: #8a6d00; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: color 0.2s ease; }
+.guide-video-banner a:hover { color: #5c4900; text-decoration: underline; }
+.guide-note { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.guide-note:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+.guide-footer { animation: fadeInUp 0.6s ease 2.4s both; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
 `;
