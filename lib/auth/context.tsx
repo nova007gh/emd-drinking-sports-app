@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const stored = localStorage.getItem(STORAGE_KEY);
           if (stored) {
             const parsed = JSON.parse(stored) as AuthUser;
-            const latest = demoUsers.find((u) => u.email === parsed.email);
+            const latest = demoUsers.find((u) => u.email === parsed.email) ?? demoUsers.find((u) => u.role === parsed.role);
             const name = latest?.name ?? parsed.name;
             setUser({ ...parsed, name });
             setRoleState(parsed.role);

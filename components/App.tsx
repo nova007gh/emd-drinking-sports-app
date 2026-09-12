@@ -431,9 +431,7 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
                     {orders.length > 0 && <span className="waiter-order-badge">{orders.length} orders</span>}
                     {waiter && (
                       <div className="waiter-table-waiter">
-                        {waiter.avatarUrl
-                          ? <img src={waiter.avatarUrl} alt={waiter.name} className="waiter-table-waiter-avatar" /* eslint-disable-line @next/next/no-img-element */ />
-                          : <div className="waiter-table-waiter-avatar placeholder">{waiter.name[0]}</div>}
+                        <StaffAvatar name={waiter.name} avatarUrl={waiter.avatarUrl} size={18} className="waiter-table-waiter-avatar" />
                         <span>{waiter.name}</span>
                       </div>
                     )}
@@ -939,6 +937,18 @@ function ProductVisual({ product }: { product: Product }) {
   return <ProductImage product={product} src={product.imageUrl} className="product-image" fallbackClassName="product-card-visual" />;
 }
 
+function StaffAvatar({ name, avatarUrl, size = 22, className = "" }: { name: string; avatarUrl?: string; size?: number; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className={`staff-avatar ${className}`} style={{ width: size, height: size, minWidth: size, minHeight: size }}>
+      {!failed && avatarUrl ? (
+        <img src={avatarUrl} alt="" onError={() => setFailed(true)} />
+      ) : (
+        <span className="staff-avatar-placeholder">{name[0]}</span>
+      )}
+    </div>
+  );
+}
 
 function POS() {
   const products = useAppStore(s=>s.products);
@@ -1552,9 +1562,7 @@ function Tables() {
       {t.occupied && t.seats.length > 0 && <small className="seat-count">{t.seats.length} {t.seats.length===1?"person":"people"}</small>}
       {t.occupied && getWaiter(t.waiterId) && (
         <div className="table-waiter" onClick={(e:React.MouseEvent)=>e.stopPropagation()}>
-          {getWaiter(t.waiterId)?.avatarUrl
-            ? <img src={getWaiter(t.waiterId)?.avatarUrl} alt={getWaiter(t.waiterId)?.name} className="table-waiter-avatar" /* eslint-disable-line @next/next/no-img-element */ />
-            : <div className="table-waiter-avatar placeholder">{getWaiter(t.waiterId)?.name?.[0]}</div>}
+          <StaffAvatar name={getWaiter(t.waiterId)!.name} avatarUrl={getWaiter(t.waiterId)!.avatarUrl} size={22} className="table-waiter-avatar" />
           <span className="table-waiter-name">{getWaiter(t.waiterId)?.name}</span>
         </div>
       )}

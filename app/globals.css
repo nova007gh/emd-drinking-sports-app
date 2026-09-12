@@ -1454,3 +1454,8 @@ tbody tr:hover{background:var(--accent-dim)}
 .event-form input:focus,.event-form select:focus{border-color:var(--yellow)}
 .event-form select{cursor:pointer}
 @media(max-width:600px){.event-form-row{grid-template-columns:1fr}}
+
+/* ===== STAFF AVATAR ===== */
+.staff-avatar { border-radius: 50%; overflow: hidden; flex: 0 0 auto; display: grid; place-items: center; }
+.staff-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.staff-avatar-placeholder { width: 100%; height: 100%; display: grid; place-items: center; background: var(--accent); color: var(--bg); font-size: 10px; font-weight: 800; }
