@@ -61,6 +61,7 @@ interface AppState {
   closeTable: (tableId: string) => void;
   reopenTable: (tableId: string) => void;
   closeTableWithDebt: (tableId: string, customerName: string, phone?: string) => void;
+  assignWaiter: (tableId: string, waiterId?: string) => void;
   addStock: (id: string, quantity: number) => void;
   adjustStock: (id: string, delta: number, reason: string) => void;
   addProduct: (product: Omit<Product, "id" | "active">) => void;
@@ -324,7 +325,7 @@ export const useAppStore = create<AppState>()(
         };
 
         const selected = state.selectedTableId;
-        const nextTables = state.tables.map((t) => selected === t.id ? { ...t, bill: 0, occupied: false } : t);
+        const nextTables = state.tables.map((t) => selected === t.id ? { ...t, bill: 0, occupied: false, waiterId: undefined } : t);
 
         let nextCustomers = state.selectedCustomerId
           ? state.customers.map((c) => c.id === state.selectedCustomerId
@@ -382,8 +383,8 @@ export const useAppStore = create<AppState>()(
         if (!from) return {};
         return {
           tables: state.tables.map((t) => {
-            if (t.id === fromId) return { ...t, occupied: false, bill: 0 };
-            if (t.id === toId) return { ...t, occupied: true, bill: from.bill };
+            if (t.id === fromId) return { ...t, occupied: false, bill: 0, waiterId: undefined };
+            if (t.id === toId) return { ...t, occupied: true, bill: from.bill, waiterId: from.waiterId };
             return t;
           })
         };
@@ -473,13 +474,19 @@ export const useAppStore = create<AppState>()(
 
       closeTable: (tableId) => set((state) => ({
         tables: state.tables.map((t) => t.id === tableId
-          ? { ...t, occupied: false, bill: 0, seats: [], lastClosedAt: new Date().toISOString() }
+          ? { ...t, occupied: false, bill: 0, seats: [], waiterId: undefined, lastClosedAt: new Date().toISOString() }
           : t)
       })),
 
       reopenTable: (tableId) => set((state) => ({
         tables: state.tables.map((t) => t.id === tableId
           ? { ...t, occupied: true, bill: 0, seats: t.seats.length > 0 ? t.seats : [], lastClosedAt: undefined }
+          : t)
+      })),
+
+      assignWaiter: (tableId, waiterId) => set((state) => ({
+        tables: state.tables.map((t) => t.id === tableId
+          ? { ...t, waiterId }
           : t)
       })),
 
@@ -519,7 +526,7 @@ export const useAppStore = create<AppState>()(
           debts: [debt, ...state.debts],
           customers: nextCustomers,
           tables: state.tables.map((t) => t.id === tableId
-            ? { ...t, occupied: false, bill: 0, seats: [], lastClosedAt: new Date().toISOString() }
+            ? { ...t, occupied: false, bill: 0, seats: [], waiterId: undefined, lastClosedAt: new Date().toISOString() }
             : t)
         });
       },

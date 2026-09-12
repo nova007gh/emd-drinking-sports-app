@@ -1436,7 +1436,9 @@ function Tables() {
   const closeTableWithDebt = useAppStore(s=>s.closeTableWithDebt);
   const products = useAppStore(s=>s.products);
   const orderToSeat = useAppStore(s=>s.orderToSeat);
-  const { can } = useAuth();
+  const staff = useAppStore(s=>s.staff);
+  const assignWaiter = useAppStore(s=>s.assignWaiter);
+  const { can, user } = useAuth();
   const [transferFrom, setTransferFrom] = useState<string | null>(null);
   const [splitTableId, setSplitTableId] = useState<string | null>(null);
   const [splitLines, setSplitLines] = useState<Set<string>>(new Set());
@@ -1515,16 +1517,41 @@ function Tables() {
 
   const expanded = expandedTable ? tables.find(t => t.id === expandedTable) : null;
 
+  const getWaiter = (id?: string) => staff.find(s => s.id === id);
+  const currentWaiterId = user?.id;
+
+  const handleReopen = (tableId: string) => {
+    reopenTable(tableId);
+    if (currentWaiterId) assignWaiter(tableId, currentWaiterId);
+  };
+
+  const handleAddFirstSeat = (tableId: string) => {
+    addSeat(tableId);
+    if (currentWaiterId) assignWaiter(tableId, currentWaiterId);
+  };
+
+  const handleAssign = (tableId: string, waiterId: string) => {
+    assignWaiter(tableId, waiterId === "" ? undefined : waiterId);
+  };
+
   return <PageBox title="Tables" subtitle="Open, close and manage bar tables">
     {transferFrom && <div className="notice">Select a target table to transfer from {tables.find(t=>t.id===transferFrom)?.name}</div>}
     <div className="table-grid">{tables.map(t=><div key={t.id} role="button" tabIndex={0} className={`table-card ${t.occupied?"occupied":"available"} ${selected===t.id?"selected":""} ${transferFrom===t.id?"transfer-source":""}`} onClick={()=>handleTableClick(t.id)} onKeyDown={(e:React.KeyboardEvent)=>{if(e.key==="Enter"||e.key===" ")handleTableClick(t.id)}}>
       <LayoutGrid/><h3>{t.name}</h3><span>{t.occupied?"Occupied":"Available"}</span><b>{money(t.bill)}</b>
       {t.occupied && t.seats.length > 0 && <small className="seat-count">{t.seats.length} {t.seats.length===1?"person":"people"}</small>}
+      {t.occupied && getWaiter(t.waiterId) && (
+        <div className="table-waiter" onClick={(e:React.MouseEvent)=>e.stopPropagation()}>
+          {getWaiter(t.waiterId)?.avatarUrl
+            ? <img src={getWaiter(t.waiterId)?.avatarUrl} alt={getWaiter(t.waiterId)?.name} className="table-waiter-avatar" /* eslint-disable-line @next/next/no-img-element */ />
+            : <div className="table-waiter-avatar placeholder">{getWaiter(t.waiterId)?.name?.[0]}</div>}
+          <span className="table-waiter-name">{getWaiter(t.waiterId)?.name}</span>
+        </div>
+      )}
       <div className="table-actions">
         <button className="mini qr-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setQrTableId(t.id)}}><Smartphone size={11}/> QR</button>
         {t.occupied && <button className="mini transfer-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();setTransferFrom(t.id)}}><ArrowRightLeft size={11}/> Transfer</button>}
         {t.occupied && <button className="mini split-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();openSplit(t.id)}}><Scissors size={11}/> Split</button>}
-        {!t.occupied && t.lastClosedAt && can("sell") && <button className="mini reopen-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();reopenTable(t.id)}}><Play size={11}/> Reopen</button>}
+        {!t.occupied && t.lastClosedAt && can("sell") && <button className="mini reopen-btn" onClick={(e:React.MouseEvent<HTMLButtonElement>)=>{e.stopPropagation();handleReopen(t.id)}}><Play size={11}/> Reopen</button>}
       </div>
     </div>)}</div>
 
@@ -1539,11 +1566,19 @@ function Tables() {
           </div>
         </div>
 
+        <div className="table-waiter-row">
+          <label>Serving waiter</label>
+          <select value={expanded.waiterId ?? ""} onChange={(e:React.ChangeEvent<HTMLSelectElement>)=>handleAssign(expanded.id, e.target.value)}>
+            <option value="">— Unassigned —</option>
+            {staff.filter(s=>s.active).map(s=><option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
+          </select>
+        </div>
+
         {expanded.seats.length === 0 ? (
           <div className="table-detail-empty">
             <Users size={28} />
             <p>No individual tabs yet. Add a person to start taking individual orders.</p>
-            {can("sell") && <button className="btn-primary" onClick={()=>addSeat(expanded.id)}><Plus size={14}/> Add First Person</button>}
+            {can("sell") && <button className="btn-primary" onClick={()=>handleAddFirstSeat(expanded.id)}><Plus size={14}/> Add First Person</button>}
           </div>
         ) : (
           <div className="seat-grid">
