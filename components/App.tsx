@@ -315,6 +315,7 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const sendChatMessage = useAppStore(s => s.sendChatMessage);
   const customers = useAppStore(s => s.customers);
   const sales = useAppStore(s => s.sales);
+  const staff = useAppStore(s => s.staff);
   const { user, userName } = useAuth();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -339,6 +340,7 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   };
 
   const getCustomer = (id?: string) => customers.find(c => c.id === id);
+  const getWaiter = (id?: string) => staff.find(s => s.id === id);
   const tableOrders = (tableId: string) => customerOrders.filter(o => o.tableId === tableId);
   const tableSales = (tableId: string) => sales.filter(s => s.tableId === tableId && !s.voided);
 
@@ -415,6 +417,7 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
               const orders = tableOrders(t.id);
               const pastSales = tableSales(t.id);
               const tableCustomers = orders.map(o => getCustomer(o.customerId)).filter(Boolean);
+              const waiter = getWaiter(t.waiterId);
               const isExpanded = expandedTable === t.id;
               return (
                 <div key={t.id} className={`waiter-table-card ${isExpanded?"expanded":""}`} onClick={() => setExpandedTable(isExpanded ? null : t.id)}>
@@ -423,9 +426,17 @@ function WaiterDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
                     <span className="waiter-table-bill">{money(t.bill)}</span>
                   </div>
                   <div className="waiter-table-meta">
-                    <small>{t.seats.length} {t.seats.length === 1 ? "person" : "people"}</small>
+                    <small>{t.seats.length === 0 ? "Group tab" : `${t.seats.length} ${t.seats.length === 1 ? "person" : "people"}`}</small>
                     {t.seats.filter(s => !s.paid).length > 0 && <span className="waiter-seat-badge">{t.seats.filter(s => !s.paid).length} unpaid</span>}
                     {orders.length > 0 && <span className="waiter-order-badge">{orders.length} orders</span>}
+                    {waiter && (
+                      <div className="waiter-table-waiter">
+                        {waiter.avatarUrl
+                          ? <img src={waiter.avatarUrl} alt={waiter.name} className="waiter-table-waiter-avatar" /* eslint-disable-line @next/next/no-img-element */ />
+                          : <div className="waiter-table-waiter-avatar placeholder">{waiter.name[0]}</div>}
+                        <span>{waiter.name}</span>
+                      </div>
+                    )}
                   </div>
                   {isExpanded && (
                     <div className="waiter-table-detail" onClick={(e:React.MouseEvent)=>e.stopPropagation()}>

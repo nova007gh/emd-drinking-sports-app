@@ -777,8 +777,11 @@ tbody tr:hover{background:var(--accent-dim)}
 .waiter-table-card:hover{border-color:var(--accent);transform:translateY(-2px)}
 .waiter-table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .waiter-table-bill{color:var(--accent);font-weight:800;font-size:16px}
-.waiter-table-meta{display:flex;gap:8px;align-items:center}
+.waiter-table-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .waiter-seat-badge{font-size:9px;background:var(--red-dim);color:var(--red);padding:2px 6px;border-radius:999px;font-weight:700}
+.waiter-table-waiter{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:10px;font-weight:700;color:var(--accent)}
+.waiter-table-waiter-avatar{width:18px;height:18px;border-radius:50%;object-fit:cover;border:1px solid var(--accent)}
+.waiter-table-waiter-avatar.placeholder{width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--bg);display:grid;place-items:center;font-size:9px;font-weight:800}
 .waiter-message-card{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px}
 .waiter-message-info{display:flex;flex-direction:column;gap:2px;flex:1}
 .waiter-message-info em{font-size:10px;color:var(--muted-dim);font-style:normal}

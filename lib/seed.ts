@@ -54,14 +54,19 @@ export const customersSeed: Customer[] = [
   { id: "c4", name: "Kofi Mensah", phone: "0240000004", totalSpent: 430, debt: 310, loyaltyPoints: 43, walletBalance: 0, visitCount: 9, lastPurchaseDate: new Date(Date.now() - 432000000).toISOString() }
 ];
 
-export const tablesSeed: BarTable[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `t${i + 1}`,
-  name: `Table ${i + 1}`,
-  occupied: [0, 2, 4, 5, 8].includes(i),
-  bill: [120, 0, 80, 0, 132, 60, 0, 0, 200, 0, 0, 0][i],
-  seats: [],
-  creditLimit: 200
-}));
+export const tablesSeed: BarTable[] = Array.from({ length: 12 }, (_, i) => {
+  const occupied = [0, 2, 5, 8].includes(i);
+  const bills = [120, 0, 80, 0, 0, 60, 0, 0, 200, 0, 0, 0];
+  return {
+    id: `t${i + 1}`,
+    name: `Table ${i + 1}`,
+    occupied,
+    bill: bills[i],
+    waiterId: occupied ? "u4" : undefined,
+    seats: [],
+    creditLimit: 200
+  };
+});
 
 export const giftCardsSeed: GiftCard[] = [
   { id: "g1", code: "EMD-9XK2-44LM", balance: 100, status: "active", createdAt: new Date().toISOString(), expiryDate: new Date(Date.now() + 7776000000).toISOString() },
