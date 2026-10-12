@@ -952,6 +952,9 @@ function ProductVisual({ product }: { product: Product }) {
   if (product.imageUrl) {
     return (
       <>
+        {/* Arbitrary user-supplied remote URL + onError swap to an SVG fallback.
+            next/image cannot optimize an unenumerable host. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.imageUrl}
           alt={product.name}
@@ -1826,7 +1829,11 @@ function Inventory() {
 
     <div className="responsive-table">
       <table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Shots left</th><th>Reorder</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>{products.map(p=><tr key={p.id}><td className="product-cell"><div className="product-cell-img">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="product-thumb" loading="lazy" onError={(e)=>{(e.target as HTMLImageElement).style.display='none';}}/> : <div className="product-thumb-svg"><ProductVisual product={p}/></div>}</div><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>{ setEditingProduct(p); setShowForm(true); }}><Pencil size={12}/> Edit</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
+        <tbody>{products.map(p=><tr key={p.id}><td className="product-cell"><div className="product-cell-img">{p.imageUrl ? <>
+              {/* Arbitrary remote URL, unenumerable in remotePatterns; hides itself on error. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.imageUrl} alt={p.name} className="product-thumb" loading="lazy" onError={(e)=>{(e.target as HTMLImageElement).style.display='none';}}/>
+            </> : <div className="product-thumb-svg"><ProductVisual product={p}/></div>}</div><b>{p.name}</b>{!p.active && <span className="voided-tag" style={{marginLeft:"6px"}}>INACTIVE</span>}</td><td>{p.category}</td><td><b className={p.stock<=p.reorderLevel?"danger-text":""}>{p.stock}</b></td><td>{p.shotsPerBottle ? `${p.remainingShots ?? p.shotsPerBottle}/${p.shotsPerBottle}` : "—"}</td><td>{p.reorderLevel}</td><td><StockBadge product={p}/></td><td><div className="button-row">{can("manage_inventory") && <button className="mini" onClick={()=>addStock(p.id,5)}>+5</button>}{can("manage_inventory") && <button className="mini" onClick={()=>adjustStock(p.id,-1,"Manual adjustment out")}>-1</button>}{can("manage_inventory") && <button className="mini" onClick={()=>{ setEditingProduct(p); setShowForm(true); }}><Pencil size={12}/> Edit</button>}{can("manage_inventory") && <button className="mini" onClick={()=>toggleProductActive(p.id)}>{p.active?"Deactivate":"Activate"}</button>}</div></td></tr>)}</tbody></table>
     </div>
 
     {showForm && can("manage_inventory") && (
@@ -1941,6 +1948,9 @@ function ProductFormModal({ product, isDemoMode, onClose, onSave }: {
           <div className="product-form-image">
             <div className="product-form-preview">
               {previewSrc ? (
+                // data: URL from a local FileReader preview. next/image does not
+                // accept data: sources.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={previewSrc} alt="Preview" className="product-form-preview-img" />
               ) : (
                 <div className="product-form-preview-svg">

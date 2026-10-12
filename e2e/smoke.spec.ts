@@ -8,19 +8,84 @@ async function signInAs(page: Page, role: "owner" | "manager" | "cashier" | "wai
   await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
 }
 
+/**
+ * Visit /login as a signed-out user.
+ * `test.beforeEach` signs in as owner, so /login would otherwise redirect to the
+ * dashboard and these auth tests would assert against the wrong page. Drop the
+ * persisted demo session first.
+ */
+async function gotoLogin(page: Page) {
+  // Remove the persisted demo session before any page script runs, so the auth
+  // context hydrates signed out. addInitScript must be used instead of clearing
+  // localStorage after load: the app would re-read/auto-redirect mid-navigation.
+  await page.addInitScript(() => {
+    try { localStorage.removeItem("emd-auth-session"); } catch { /* not ready yet */ }
+  });
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible({ timeout: 10000 });
+}
+
+/**
+ * The dashboard <h1> is role-dependent (see App.tsx `greeting`):
+ * cashier -> "Sales Dashboard", owner/manager -> "Business Dashboard".
+ * Waiters are routed to their own "Welcome, <name>" operations page instead,
+ * so they are not covered here.
+ */
+function dashboardHeading(role: "owner" | "manager" | "cashier" | "waiter") {
+  return role === "cashier" ? "Sales Dashboard" : "Business Dashboard";
+}
+
+/**
+ * Open the off-canvas mobile sidebar if it is collapsed.
+ * On narrow viewports `.sidebar` is `position:fixed; left:-260px` until the
+ * topbar toggle adds the `open` class, so anything inside it (Sign out,
+ * the BIG MATCH card, nav buttons) cannot be clicked while collapsed.
+ */
+async function openSidebar(page: Page) {
+  const menuBtn = page.locator(".topbar .mobile-only");
+  if (!(await menuBtn.isVisible().catch(() => false))) return;
+  const isOpen = await page
+    .locator("aside.sidebar")
+    .evaluate((el) => el.classList.contains("open"))
+    .catch(() => false);
+  if (!isOpen) {
+    await menuBtn.click();
+    await page.waitForTimeout(300); // let the .2s slide finish
+  }
+}
+
+/**
+ * Navigate and wait for hydration.
+ * On the dev server the route's JS can still be streaming when `page.goto`
+ * resolves. Filling and clicking a form control before React hydrates means the
+ * submit runs with no handler attached: the native form submit reloads the page
+ * and the entered values are lost, so the expected error/success never renders.
+ * Routes without an auth loading gate (e.g. /reset-password) have nothing to
+ * await, so wait for the network to settle instead.
+ */
+async function gotoHydrated(page: Page, path: string) {
+  await page.goto(path);
+  await page.waitForLoadState("networkidle");
+}
+
 /** Navigate to a page, opening the mobile sidebar first if needed. */
 async function navigateTo(page: Page, name: string) {
   const btn = page.getByRole("button", { name: name }).first();
-  const isVisible = await btn.isVisible({ timeout: 2000 }).catch(() => false);
-  if (!isVisible) {
-    // On mobile, the sidebar is collapsed — open it first
+  // isVisible() is NOT enough here: the collapsed mobile sidebar is
+  // `position:fixed; left:-260px`, so its buttons are still visibility:visible
+  // and report isVisible() === true while sitting off-canvas at a negative x.
+  // Playwright then refuses to click ("element is outside of the viewport").
+  // Detect the off-canvas state by the negative x instead, which is unambiguous:
+  // open sidebar => left:0 (x >= 0), closed => left:-260px (x < 0).
+  const box = await btn.boundingBox({ timeout: 2000 }).catch(() => null);
+  if (box && box.x < 0) {
     const menuBtn = page.locator(".topbar .mobile-only");
-    if (await menuBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await menuBtn.isVisible().catch(() => false)) {
       await menuBtn.click();
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(300); // let the .2s slide finish
     }
   }
-  await page.getByRole("button", { name: name }).first().click();
+  await btn.click();
 }
 
 /** Click PAY NOW and confirm in the payment modal. */
@@ -277,14 +342,16 @@ test("wallets page shows customer loyalty", async ({ page }) => {
 });
 
 test("login page renders with demo credentials", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await expect(page.getByText("QUICK LOGIN")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Owner/ })).toBeVisible();
+  // The demo role buttons are Admin/Manager/Coordinator/Cashier/Waiter —
+  // there is no "Owner" quick-login button.
+  await expect(page.getByRole("button", { name: /Admin/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Cashier/ })).toBeVisible();
 });
 
 test("login rejects invalid credentials", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("wrong@emd.com");
   await page.getByPlaceholder("Password").fill("wrongpass");
   await page.getByRole("button", { name: "Sign In" }).click();
@@ -292,13 +359,14 @@ test("login rejects invalid credentials", async ({ page }) => {
 });
 
 test("login quick login button fills credentials", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByRole("button", { name: /Cashier/ }).click();
   // Quick login auto-submits, so we should end up on the dashboard
-  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("heading", { name: dashboardHeading("cashier") })).toBeVisible({ timeout: 10000 });
 });
 
 test("sign out returns to login", async ({ page }) => {
+  await openSidebar(page);
   await page.getByRole("button", { name: /Sign out/ }).click();
   await page.waitForURL("**/login", { timeout: 5000 });
   await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
@@ -342,30 +410,33 @@ test("receipt print button appears after checkout", async ({ page }) => {
 });
 
 test("manager can sign in and see dashboard", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("manager@emd.com");
   await page.getByPlaceholder("Password").fill("manager123");
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
-  await expect(page.locator(".owner").getByText("Manager")).toBeVisible();
+  await expect(page.getByRole("heading", { name: dashboardHeading("manager") })).toBeVisible({ timeout: 10000 });
+  // The sidebar `.owner` identity block is hidden by responsive CSS on narrow
+  // viewports, so assert the greeting, which is always rendered.
+  await expect(page.getByText(/WELCOME BACK, YAW/i)).toBeVisible();
 });
 
 test("cashier can sign in and access POS", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("cashier@emd.com");
   await page.getByPlaceholder("Password").fill("cashier123");
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("heading", { name: dashboardHeading("cashier") })).toBeVisible({ timeout: 10000 });
   await navigateTo(page, "POS / Sales");
   await expect(page.getByRole("heading", { name: "POS / Sales" })).toBeVisible();
 });
 
 test("waiter can sign in but cannot see expenses", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("waiter@emd.com");
   await page.getByPlaceholder("Password").fill("waiter123");
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
+  // Waiters land on their own "Welcome, <name>" operations page, not the dashboard.
+  await expect(page.getByRole("heading", { name: /^Welcome,/ })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole("button", { name: "Expenses" })).toHaveCount(0);
 });
 
@@ -403,13 +474,14 @@ test("debt creation via customer checkout on credit", async ({ page }) => {
 });
 
 test("forgot password page renders", async ({ page }) => {
-  await page.goto("/forgot-password");
+  await gotoHydrated(page, "/forgot-password");
   await expect(page.getByRole("heading", { name: "Reset Password" })).toBeVisible();
   await expect(page.getByPlaceholder("Email address")).toBeVisible();
 });
 
 test("forgot password shows success message in demo mode", async ({ page }) => {
-  await page.goto("/forgot-password");
+  await gotoLogin(page);
+  await gotoHydrated(page, "/forgot-password");
   await page.getByPlaceholder("Email address").fill("test@emd.com");
   await page.getByRole("button", { name: /Send Reset Link/ }).click();
   await expect(page.getByText("Reset link sent")).toBeVisible({ timeout: 5000 });
@@ -423,12 +495,12 @@ test("forgot password back link navigates to login", async ({ page }) => {
 });
 
 test("login page has forgot password link", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await expect(page.getByText("Forgot password?")).toBeVisible();
 });
 
 test("manager can access expenses but not settings", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("manager@emd.com");
   await page.getByPlaceholder("Password").fill("manager123");
   await page.getByRole("button", { name: "Sign In" }).click();
@@ -438,11 +510,11 @@ test("manager can access expenses but not settings", async ({ page }) => {
 });
 
 test("cashier can access payments but not staff", async ({ page }) => {
-  await page.goto("/login");
+  await gotoLogin(page);
   await page.getByPlaceholder("Email address").fill("cashier@emd.com");
   await page.getByPlaceholder("Password").fill("cashier123");
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.getByRole("heading", { name: "Business Dashboard" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("heading", { name: dashboardHeading("cashier") })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole("button", { name: "Payments" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Staff" })).toHaveCount(0);
 });
@@ -466,25 +538,33 @@ test("electronic payment pills are disabled when offline", async ({ page, contex
 });
 
 test("electronic payment checkout blocked when offline", async ({ page, context }) => {
-  await context.setOffline(true);
   await navigateTo(page, "POS / Sales");
   const clubCard = page.locator("article").filter({ hasText: "Club Beer" }).first();
   await clubCard.getByRole("button", { name: /Bottle/ }).click();
-  // Try to checkout — should show offline warning, not complete
+  // PAY NOW only opens the pay modal; complete() runs from the modal confirm.
+  // Pick Mobile Money while still online — offline the pill is disabled, so the
+  // "cannot be processed while offline" guard is only reachable this way.
   await page.getByRole("button", { name: /PAY NOW/i }).click();
-  await expect(page.getByText(/offline|cannot be processed/i)).toBeVisible({ timeout: 5000 });
+  await page.locator(".pay-modal").waitFor({ state: "visible" });
+  await page.locator(".pay-modal").getByRole("button", { name: /Mobile Money/ }).click();
+  // Confirm stays disabled for momo until a >=9 char phone is supplied.
+  await page.getByPlaceholder("055 123 4567").fill("0551234567");
+  await context.setOffline(true);
+  await page.locator(".pay-confirm").click();
+  await expect(page.getByText(/cannot be processed while offline/i)).toBeVisible({ timeout: 5000 });
   await context.setOffline(false);
 });
 
 test("reset password page renders", async ({ page }) => {
-  await page.goto("/reset-password");
+  await gotoHydrated(page, "/reset-password");
   await expect(page.getByText("Set New Password")).toBeVisible();
   await expect(page.getByPlaceholder("New password (min 6 chars)")).toBeVisible();
   await expect(page.getByPlaceholder("Confirm new password")).toBeVisible();
 });
 
 test("reset password validates mismatched passwords", async ({ page }) => {
-  await page.goto("/reset-password");
+  await gotoLogin(page);
+  await gotoHydrated(page, "/reset-password");
   await page.getByPlaceholder("New password (min 6 chars)").fill("password1");
   await page.getByPlaceholder("Confirm new password").fill("password2");
   await page.getByRole("button", { name: /Update Password/ }).click();
@@ -492,7 +572,7 @@ test("reset password validates mismatched passwords", async ({ page }) => {
 });
 
 test("reset password validates minimum length", async ({ page }) => {
-  await page.goto("/reset-password");
+  await gotoHydrated(page, "/reset-password");
   await page.getByPlaceholder("New password (min 6 chars)").fill("abc");
   await page.getByPlaceholder("Confirm new password").fill("abc");
   await page.getByRole("button", { name: /Update Password/ }).click();
@@ -500,7 +580,8 @@ test("reset password validates minimum length", async ({ page }) => {
 });
 
 test("reset password succeeds in demo mode", async ({ page }) => {
-  await page.goto("/reset-password");
+  await gotoLogin(page);
+  await gotoHydrated(page, "/reset-password");
   await page.getByPlaceholder("New password (min 6 chars)").fill("newpass123");
   await page.getByPlaceholder("Confirm new password").fill("newpass123");
   await page.getByRole("button", { name: /Update Password/ }).click();
@@ -587,9 +668,11 @@ test("table can be closed with debt", async ({ page }) => {
 });
 
 test("login page shows quick login buttons for all roles", async ({ page }) => {
-  await page.goto("/login");
-  await expect(page.getByRole("button", { name: /Owner/ })).toBeVisible();
+  await gotoLogin(page);
+  // Demo roles are Admin/Manager/Coordinator/Cashier/Waiter (no Owner button).
+  await expect(page.getByRole("button", { name: /Admin/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Manager/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Coordinator/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Cashier/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Waiter/ })).toBeVisible();
 });
@@ -671,16 +754,17 @@ test("payments page shows reconciliation column", async ({ page }) => {
 
 test("event management shows table reservation management", async ({ page }) => {
   await navigateTo(page, "Event Management");
-  await expect(page.getByText("Tables reserved").first()).toBeVisible();
-  const manageBtn = page.getByRole("button", { name: /Manage table reservations/ }).first();
+  // The card shows reserved/total as "N/M tables", not a "Tables reserved" label.
+  await expect(page.getByText(/\d+\/\d+ tables/).first()).toBeVisible();
+  const manageBtn = page.getByRole("button", { name: /Manage tables/ }).first();
   await manageBtn.click();
-  await expect(page.getByText("Reserve").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Reserve$/ }).first()).toBeVisible();
 });
 
 test("event management table reservation toggles", async ({ page }) => {
   await navigateTo(page, "Event Management");
   const firstMatch = page.locator(".info-card").first();
-  await firstMatch.getByRole("button", { name: /Manage table reservations/ }).click();
+  await firstMatch.getByRole("button", { name: /Manage tables/ }).click();
   const firstReserveBtn = page.locator(".reservation-row").first().getByRole("button");
   await firstReserveBtn.click();
   await expect(page.locator(".reservation-row.reserved").first()).toBeVisible();
@@ -773,8 +857,9 @@ test("event mode toggle hides big match card", async ({ page }) => {
 });
 
 test("big match card navigates to event management", async ({ page }) => {
+  await openSidebar(page);
   await page.locator(".big-match-card").click();
-  await expect(page.getByText("Turn big matches into bigger nights")).toBeVisible();
+  await expect(page.getByText("Turn big events into bigger nights")).toBeVisible();
 });
 
 test("sidebar shows bar and lounge tagline", async ({ page }) => {
@@ -789,8 +874,9 @@ test("POS shows pagination controls", async ({ page }) => {
 
 test("POS product cards show stock badge", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
-  // Out-of-stock products should show an OUT badge
-  await expect(page.locator(".stock-chip.out").first()).toBeVisible();
+  // `.stock-chip.out` only renders when stock <= 0, which no seed product has,
+  // so assert the LOW badge (stock <= reorderLevel) that the seed data produces.
+  await expect(page.locator(".stock-chip.low").first()).toBeVisible();
 });
 
 test("POS cart shows subtotal, discount and line totals", async ({ page }) => {
@@ -829,12 +915,14 @@ test("POS OPEN TAB requires a table and reports running total", async ({ page })
 
 test("POS pagination navigates to next page", async ({ page }) => {
   await navigateTo(page, "POS / Sales");
-  // If there are multiple pages, clicking next should reveal new products
+  // If there are multiple pages, clicking next should move the active marker.
+  // Capture the active page's label first: re-querying `.page-num.active` after
+  // the click would match the NEW active button and the assertion could never hold.
   const nextBtn = page.locator(".page-nav").last();
   if (await nextBtn.isEnabled({ timeout: 2000 }).catch(() => false)) {
-    const firstPageNum = page.locator(".page-num.active");
+    const activeBefore = (await page.locator(".page-num.active").first().textContent())?.trim();
     await nextBtn.click();
-    await expect(firstPageNum).not.toHaveClass(/active/);
+    await expect(page.locator(".page-num.active").first()).not.toHaveText(activeBefore ?? "");
   }
 });
 

@@ -512,6 +512,10 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
             <div key={p.id} className="portal-menu-item">
               <div className="portal-menu-item-icon">
                 {p.imageUrl ? (
+                  // Arbitrary user-supplied remote URL (any host, not enumerable in
+                  // next.config remotePatterns) plus an onError fallback that swaps
+                  // to an icon. next/image would reject the unlisted host.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.imageUrl} alt={p.name} className="portal-menu-item-img" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 ) : categoryIcon(p.category)}
               </div>
