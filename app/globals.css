@@ -1101,6 +1101,7 @@ tbody tr:hover{background:rgba(249,195,23,.03)}
 .portal-menu-item:hover{border-color:#3a3d41}
 .portal-menu-item-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--yellow);background:#191405;border:1px solid #44380d;flex-shrink:0;overflow:hidden}
 .portal-menu-item-img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.portal-menu-item-icon-fallback{display:grid;place-items:center;width:100%;height:100%}
 .portal-menu-item-info{flex:1;min-width:0}
 .portal-menu-item-info strong{display:block;font-size:13px}
 .portal-menu-item-info small{font-size:10px;color:var(--muted)}

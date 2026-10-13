@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import { ProductImage } from "@/components/ProductImage";
 import type { Product, ProductCategory, CartLine } from "@/lib/types";
 import { InventoryError } from "@/lib/domain/inventory";
 import { compressAndConvertToDataURL } from "@/lib/image/compress";
@@ -512,12 +513,15 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
             <div key={p.id} className="portal-menu-item">
               <div className="portal-menu-item-icon">
                 {p.imageUrl ? (
-                  // Arbitrary user-supplied remote URL (any host, not enumerable in
-                  // next.config remotePatterns) plus an onError fallback that swaps
-                  // to an icon. next/image would reject the unlisted host.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.imageUrl} alt={p.name} className="portal-menu-item-img" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                ) : categoryIcon(p.category)}
+                  <ProductImage
+                    product={p as Product}
+                    src={p.imageUrl}
+                    className="portal-menu-item-img"
+                    fallbackClassName="portal-menu-item-icon-fallback"
+                    fallback={categoryIcon(p.category)} />
+                ) : (
+                  <span className="portal-menu-item-icon-fallback">{categoryIcon(p.category)}</span>
+                )}
               </div>
               <div className="portal-menu-item-info">
                 <strong>{p.name}</strong>
