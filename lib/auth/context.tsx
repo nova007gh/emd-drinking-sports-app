@@ -48,6 +48,28 @@ function getSupabaseConfigured(): boolean {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 
+/**
+ * Turn a raw Supabase error into something a bar manager can act on.
+ *
+ * supabase-js surfaces network failures as "Failed to fetch", which tells the
+ * user nothing. That message is what appears when the deployment points at a
+ * project that no longer exists (DNS NXDOMAIN) or is unreachable, so it is
+ * worth naming the two likely causes.
+ */
+export function friendlyAuthError(error: { message?: string; status?: number | null }): string {
+  const message = error.message ?? "";
+
+  if (/failed to fetch|fetch failed|networkerror|load failed|econnrefused|econnreset|etimedout|enotfound|getaddrinfo|network request failed|offline/i.test(message)) {
+    return "Cannot reach the sign-in server. Check your internet connection, and if the problem persists ask your administrator to confirm the database settings.";
+  }
+
+  if (message === "Invalid login credentials") {
+    return "Incorrect email or password.";
+  }
+
+  return message || "Sign in failed. Please try again.";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const isDemoMode = !getSupabaseConfigured();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -140,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: error.message };
+      if (error) return { error: friendlyAuthError(error) };
       if (data.user) {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
