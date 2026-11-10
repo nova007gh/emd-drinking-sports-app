@@ -22,6 +22,7 @@ import type { PaymentMethod, ProductCategory, SaleRecord, AppRole, Product, Gift
 import type { Permission } from "@/lib/auth/roles";
 import { QRCodeSVG } from "qrcode.react";
 import { ProductImage } from "@/components/ProductImage";
+import { StaffAvatar } from "@/components/StaffAvatar";
 import { compressImage, blobToDataURL, compressAndConvertToDataURL } from "@/lib/image/compress";
 
 type Page =
@@ -961,19 +962,6 @@ function ProductVisual({ product }: { product: Product }) {
   // Product image rendering moved to components/ProductImage.tsx; the branded
   // SVG fallback lives in components/ProductVisual.tsx.
   return <ProductImage product={product} src={product.imageUrl} className="product-image" fallbackClassName="product-card-visual" />;
-}
-
-function StaffAvatar({ name, avatarUrl, size = 22, className = "" }: { name: string; avatarUrl?: string; size?: number; className?: string }) {
-  const [failed, setFailed] = useState(false);
-  return (
-    <div className={`staff-avatar ${className}`} style={{ width: size, height: size, minWidth: size, minHeight: size }}>
-      {!failed && avatarUrl ? (
-        <img src={avatarUrl} alt="" onError={() => setFailed(true)} />
-      ) : (
-        <span className="staff-avatar-placeholder">{name[0]}</span>
-      )}
-    </div>
-  );
 }
 
 function POS() {

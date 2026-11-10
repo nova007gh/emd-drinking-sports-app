@@ -1077,11 +1077,7 @@ tbody tr:hover{background:var(--accent-dim)}
 .portal-checkin-error{color:#e88;font-size:12px}
 .portal-checkin-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--gold);color:#1a1a1a;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px}
 .portal-checkin-btn:hover{background:var(--yellow)}
-.portal-checkin-demo{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
-.portal-checkin-demo small{color:var(--muted);font-size:11px}
-.portal-checkin-demo-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;justify-content:center}
-.portal-demo-chip{background:#1a1d1f;border:1px solid var(--line);color:var(--gold);border-radius:16px;padding:5px 14px;font-size:12px;cursor:pointer}
-.portal-demo-chip:hover{border-color:var(--gold)}
+.portal-checkin-hint{margin-top:16px;color:var(--muted);font-size:11px;text-align:center}
 .portal-signout{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;display:grid;place-items:center}
 .portal-signout:hover{color:#e88;border-color:#e88}
 .qr-modal{max-width:360px;text-align:center}
@@ -1280,6 +1276,7 @@ tbody tr:hover{background:var(--accent-dim)}
 .portal-pay-methods button{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 4px;font-size:9px;font-weight:600;cursor:pointer;transition:var(--transition)}
 .portal-pay-methods button.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
 .portal-pay-methods button:hover:not(.active){border-color:var(--muted)}
+.portal-pay-insufficient{color:#e8a0a0;font-size:11px;text-align:center}
 .portal-btn-cancel{background:none;border:0;color:var(--muted);font-size:11px;cursor:pointer;padding:4px}
 /* Wallet page */
 .portal-wallet-hero{position:relative;background:linear-gradient(135deg,var(--surface-3),#0a0808);border:1px solid var(--accent);border-radius:18px;padding:24px;overflow:hidden;text-align:center}
@@ -1306,6 +1303,7 @@ tbody tr:hover{background:var(--accent-dim)}
 .portal-topup-custom input{background:#101214;color:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;outline:none;transition:var(--transition)}
 .portal-topup-custom input:focus{border-color:var(--accent)}
 .portal-topup>small{font-size:11px;color:var(--muted)}
+.portal-topup-note{color:var(--muted);opacity:.7;text-align:center}
 .portal-topup-btn{margin-top:4px}
 .portal-wallet-tips{background:var(--accent-dim);border:1px solid var(--accent-dim);border-radius:14px;padding:14px}
 .portal-wallet-tips>strong{font-size:13px;display:block;margin-bottom:6px}

@@ -10,15 +10,28 @@ import {
 import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { ProductImage } from "@/components/ProductImage";
+import { StaffAvatar } from "@/components/StaffAvatar";
 import type { Product, ProductCategory, CartLine } from "@/lib/types";
 import { InventoryError } from "@/lib/domain/inventory";
 import { compressAndConvertToDataURL } from "@/lib/image/compress";
 
 const money = (v: number) => `GHS ${v.toFixed(2)}`;
 
-type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet" | "report" | "profile" | "rewards" | "ai";
+type PortalTab = "home" | "events" | "menu" | "tables" | "orders" | "waiter" | "wallet" | "profile" | "ai";
 
 const PORTAL_SESSION_KEY = "emd-portal-customer-id";
+
+/** Normalise Ghanaian phone numbers so "0240000001", "+233 24 000 0001" and "233240000001" all match. */
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("233")) digits = `0${digits.slice(3)}`;
+  return digits;
+}
+
+function findCustomerByPhone(customers: Array<{ id: string; phone: string }>, raw: string) {
+  const normalized = normalizePhone(raw);
+  return customers.find(c => normalizePhone(c.phone) === normalized);
+}
 
 export default function CustomerPortal() {
   const [tab, setTab] = useState<PortalTab>("home");
@@ -49,16 +62,17 @@ export default function CustomerPortal() {
   }, []);
 
   const handleCheckIn = (phone: string, name: string) => {
-    const existing = customers.find(c => c.phone === phone);
+    const normalized = normalizePhone(phone);
+    const existing = findCustomerByPhone(customers, phone);
     let id: string;
     if (existing) {
       id = existing.id;
     } else {
-      // Create a new customer record
-      addCustomer(name || `Guest ${phone.slice(-4)}`, phone);
+      // Create a new customer record, storing the normalised phone so future lookups match
+      addCustomer(name || `Guest ${normalized.slice(-4)}`, normalized);
       // Find the newly added customer by phone (it's the last one added)
       const updated = useAppStore.getState().customers;
-      const created = updated.find(c => c.phone === phone);
+      const created = findCustomerByPhone(updated, normalized);
       id = created?.id ?? updated[updated.length - 1].id;
     }
     setCustomerId(id);
@@ -136,9 +150,7 @@ export default function CustomerPortal() {
             ["orders", "My Orders", Receipt],
             ["waiter", "Waiter", Bell],
             ["wallet", "Wallet", Wallet],
-            ["rewards", "Rewards", Star],
             ["ai", "AI Assistant", Bot],
-            ["report", "Report", AlertTriangle],
             ["profile", "Profile", Users]
           ] as Array<[PortalTab, string, typeof Home]>).map(([key, label, Icon]) => (
             <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
@@ -155,10 +167,8 @@ export default function CustomerPortal() {
           {tab === "tables" && <PortalTables selectedTableId={selectedTableId} onSelect={setSelectedTableId} />}
           {tab === "orders" && <PortalOrders customerId={customerId} />}
           {tab === "waiter" && <PortalWaiter customerId={customerId} selectedTableId={selectedTableId} />}
-          {tab === "wallet" && <PortalWallet customerId={customerId} />}
-          {tab === "report" && <PortalReport customerId={customerId} customerName={customer?.name ?? ""} selectedTableId={selectedTableId} />}
-          {tab === "profile" && <PortalProfile customerId={customerId} />}
-          {tab === "rewards" && <PortalRewards customerId={customerId} />}
+          {tab === "wallet" && (<><PortalWallet customerId={customerId} /><PortalRewards customerId={customerId} /></>)}
+          {tab === "profile" && (<><PortalProfile customerId={customerId} /><PortalReport customerId={customerId} customerName={customer?.name ?? ""} selectedTableId={selectedTableId} /></>)}
           {tab === "ai" && <PortalAI customerId={customerId} />}
         </div>
       </div>
@@ -170,7 +180,6 @@ function PortalCheckIn({ onCheckIn, barOpen }: { onCheckIn: (phone: string, name
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const customers = useAppStore(s => s.customers);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,13 +188,6 @@ function PortalCheckIn({ onCheckIn, barOpen }: { onCheckIn: (phone: string, name
     if (cleanPhone.length < 9) { setError("Phone number seems too short"); return; }
     setError(null);
     onCheckIn(cleanPhone, name.trim());
-  };
-
-  // Quick-fill for demo customers
-  const quickFill = (demoPhone: string) => {
-    setPhone(demoPhone);
-    const c = customers.find(c => c.phone === demoPhone);
-    if (c) setName(c.name);
   };
 
   return (
@@ -234,18 +236,7 @@ function PortalCheckIn({ onCheckIn, barOpen }: { onCheckIn: (phone: string, name
             </button>
           </form>
 
-          {customers.length > 0 && (
-            <div className="portal-checkin-demo">
-              <small>Quick check-in (demo):</small>
-              <div className="portal-checkin-demo-chips">
-                {customers.slice(0, 4).map(c => (
-                  <button key={c.id} type="button" onClick={() => quickFill(c.phone)} className="portal-demo-chip">
-                    {c.name.split(" ")[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <small className="portal-checkin-hint">New here? Just enter your number — we'll set up your profile automatically.</small>
         </div>
       </div>
     </div>
@@ -589,16 +580,20 @@ function PortalMenu({ customerId, selectedTableId }: { customerId: string; selec
 function PortalTables({ selectedTableId, onSelect }: { selectedTableId: string | null; onSelect: (id: string) => void }) {
   const tables = useAppStore(s => s.tables);
   const toggleTable = useAppStore(s => s.toggleTable);
+  const selected = tables.find(t => t.id === selectedTableId);
 
   return (
     <div className="portal-section">
       <h2 className="portal-title">Tables</h2>
       <p className="portal-subtitle">Pick your table when you arrive at the bar</p>
 
-      {selectedTableId && (
+      {selected && (
         <div className="portal-alert success">
           <CheckCircle2 size={16} />
-          <span>You're at Table {selectedTableId.replace("t", "")}</span>
+          <span>
+            You're at {selected.name}
+            {selected.bill > 0 && <> — tab so far: <b>{money(selected.bill)}</b></>}
+          </span>
         </div>
       )}
 
@@ -715,9 +710,16 @@ function PortalOrders({ customerId }: { customerId: string }) {
                         <CircleDollarSign size={14} /> Cash
                       </button>
                     </div>
-                    <button className="portal-btn-primary" onClick={() => handlePay(o.id, total)}>
+                    <button
+                      className="portal-btn-primary"
+                      onClick={() => handlePay(o.id, total)}
+                      disabled={payMethod === "wallet" && !!customer && customer.walletBalance < total}
+                    >
                       <CheckCircle2 size={16} /> Confirm Payment {money(total)}
                     </button>
+                    {payMethod === "wallet" && customer && customer.walletBalance < total && (
+                      <small className="portal-pay-insufficient">Wallet balance too low — top up in the Wallet tab or choose MoMo/cash.</small>
+                    )}
                     <button className="portal-btn-cancel" onClick={() => setPayingId(null)}>Cancel</button>
                   </div>
                 )}
@@ -774,7 +776,7 @@ function PortalWaiter({ customerId, selectedTableId }: { customerId: string; sel
       <div className="portal-waiters-list">
         {waiters.map(w => (
           <div key={w.id} className="portal-waiter-card">
-            <div className="portal-waiter-avatar">{w.name[0]}</div>
+            <StaffAvatar name={w.name} avatarUrl={w.avatarUrl} size={44} className="portal-waiter-avatar" />
             <div className="portal-waiter-info">
               <strong>{w.name}</strong>
               <span>Waiter</span>
@@ -931,6 +933,7 @@ function PortalWallet({ customerId }: { customerId: string }) {
         <button className="portal-btn-primary portal-topup-btn" onClick={handleTopUp} disabled={amount <= 0 || processing}>
           {processing ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><Wallet size={16} /> Top Up {money(amount)}</>}
         </button>
+        <small className="portal-topup-note">Demo mode — top-ups are simulated and no real money is charged.</small>
 
         {toppedUp && (
           <div className="portal-success">
@@ -1144,9 +1147,10 @@ function PortalRewards({ customerId }: { customerId: string }) {
 
   if (!customer) return null;
 
-  // Points cost: 10 points per GHS 1 of product value
+  // Points cost: 1 point per GHS 1 of item value (~10% back, matching the
+  // 1-point-per-GHS-10 earn rate)
   const redeemableProducts = products.filter(p => p.active && p.stock > 0)
-    .map(p => ({ ...p, pointsCost: Math.ceil(p.bottlePrice * 10) }))
+    .map(p => ({ ...p, pointsCost: Math.ceil(p.bottlePrice) }))
     .filter(p => p.pointsCost <= customer.loyaltyPoints);
 
   const handleRedeem = (productId: string, pointsCost: number, name: string) => {
