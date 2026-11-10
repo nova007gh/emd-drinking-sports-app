@@ -15,7 +15,7 @@ const PERSIST_KEY = "emd-drinking-sports-v4";
  * so everyone picks up the new catalogue; a match keeps the operator's real work
  * (sales, stock levels, customers, open tables) intact across refreshes.
  */
-const SEED_VERSION = 11;
+const SEED_VERSION = 12;
 
 // Clean up old persisted keys from previous versions
 if (typeof window !== "undefined") {

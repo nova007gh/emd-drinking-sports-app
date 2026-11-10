@@ -130,8 +130,8 @@ export const salesSeed: SaleRecord[] = [
 export const staffSeed: StaffMember[] = [
   { id: "u1", name: "Emmanuel", role: "owner", active: true, phone: "0240000000", salesCount: 142, ordersHandled: 38 },
   { id: "u2", name: "Yaw", role: "manager", active: true, phone: "0240000010", salesCount: 98, ordersHandled: 27 },
-  { id: "u3", name: "Ama", role: "cashier", active: true, phone: "0240000020", salesCount: 215, ordersHandled: 52, avatarUrl: "/images/staff/ama.jpg" },
-  { id: "u4", name: "Kofi", role: "waiter", active: true, phone: "0240000030", salesCount: 67, ordersHandled: 41, avatarUrl: "/images/staff/kofi.jpg" }
+  { id: "u3", name: "Ama", role: "cashier", active: true, phone: "0240000020", salesCount: 215, ordersHandled: 52, avatarUrl: "/images/staff/ama.svg" },
+  { id: "u4", name: "Kofi", role: "waiter", active: true, phone: "0240000030", salesCount: 67, ordersHandled: 41, avatarUrl: "/images/staff/kofi.svg" }
 ];
 
 export const matchesSeed: BarEvent[] = [
