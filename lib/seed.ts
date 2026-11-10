@@ -9,7 +9,7 @@ export const productsSeed: Product[] = [
   { id: "p12", name: "Budweiser", category: "Beer", bottlePrice: 25, stock: 15, reorderLevel: 6, active: true, costPrice: 18, imageUrl: "/images/products/5.jpg" },
   { id: "p13", name: "Gulder", category: "Beer", bottlePrice: 17, stock: 22, reorderLevel: 8, active: true, costPrice: 11, imageUrl: "/images/products/6.jpg" },
   // Spirits
-  { id: "p4", name: "Black & White", category: "Spirits", bottlePrice: 220, shotPrice: 15, stock: 8, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 10, active: true, costPrice: 150, imageUrl: "/images/products/7.jpg" },
+  { id: "p4", name: "Black & White", category: "Spirits", bottlePrice: 220, shotPrice: 15, stock: 8, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 10, active: true, costPrice: 150, imageUrl: "/images/products/7.png" },
   { id: "p5", name: "Johnnie Walker", category: "Spirits", bottlePrice: 250, shotPrice: 18, stock: 5, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 6, active: true, costPrice: 170, imageUrl: "/images/products/8.jpg" },
   { id: "p6", name: "Hennessy VS", category: "Spirits", bottlePrice: 300, shotPrice: 22, stock: 3, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 9, active: true, costPrice: 210, imageUrl: "/images/products/9.jpg" },
   { id: "p14", name: "Adebayo", category: "Spirits", bottlePrice: 180, shotPrice: 12, stock: 6, reorderLevel: 3, shotsPerBottle: 15, remainingShots: 11, active: true, costPrice: 120, imageUrl: "/images/products/10.jpg" },
